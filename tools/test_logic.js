@@ -10,9 +10,9 @@ const { webcrypto } = require('crypto');
 const ROOT = 'E:/workbuddy code/kadian';
 const FILES = [
   'assets/js/config.js', 'assets/js/db.js', 'assets/js/srs.js', 'assets/js/mastery.js',
-  'assets/js/util.js', 'assets/js/ai.js', 'assets/js/ocr.js', 'assets/js/store.js',
+  'assets/js/util.js', 'assets/js/ai.js', 'assets/js/store.js',
   'assets/js/ui.js', 'assets/js/select.js',
-  'assets/js/views/home.js', 'assets/js/views/ask.js', 'assets/js/views/library.js',
+  'assets/js/views/home.js', 'assets/js/views/quiz.js', 'assets/js/views/library.js',
   'assets/js/views/review.js', 'assets/js/views/practice.js', 'assets/js/views/settings.js',
   'assets/js/main.js'
 ];
@@ -159,6 +159,8 @@ function ok(name, cond) {
 
   /* 8. judge 边界 */
   ok('judge 容错：大小写/全角/空格', Store.judge({ type: 'choice', answer: 'a' }, 'Ａ') === true || Store.judge({ type: 'choice', answer: 'a' }, 'A') === true);
+  ok('judge 选择题认完整选项文本（界面点击回传）', Store.judge({ type: 'choice', answer: 'A' }, 'A. 回顾、回首') === true);
+  ok('judge 选择题答案本身是完整文本时也对', Store.judge({ type: 'choice', answer: 'A. 回顾、回首' }, 'A. 回顾、回首') === true);
   ok('judge 多答案管道符', Store.judge({ type: 'fill', answer: '3|x=3' }, '3') === true);
   ok('judge 主观题返回 null', Store.judge({ type: 'subjective', answer: 'anything' }, 'whatever') === null);
 
@@ -170,7 +172,7 @@ function ok(name, cond) {
   /* 10. 视图渲染冒烟（全部 hash 路由） */
   const root = makeEl();
   const renders = {};
-  for (const name of ['home', 'ask', 'library', 'review', 'practice', 'settings']) {
+  for (const name of ['home', 'quiz', 'library', 'review', 'practice', 'settings']) {
     location.hash = '#/' + name;
     const r = makeEl();
     await sandbox.window.Views[name].render(r, {});
@@ -178,7 +180,8 @@ function ok(name, cond) {
     ok('视图 ' + name + ' 产出非空 HTML', renders[name].length > 50);
   }
   ok('今日页含统计卡与薄弱点', renders.home.indexOf('待复习') >= 0 && renders.home.indexOf('薄弱知识点') >= 0);
-  ok('未配置 AI 时拍照问显示配置引导', renders.ask.indexOf('还没配置 AI 服务') >= 0);
+  ok('未配置 AI 时做题页显示配置引导', renders.quiz.indexOf('还没配置 AI 服务') >= 0);
+  ok('今日页入口是做题而非拍照问', renders.home.indexOf('去做题') >= 0 && renders.home.indexOf('拍照问') < 0);
   ok('卡点库含搜索框与学科筛选', renders.library.indexOf('searchInput') >= 0 && renders.library.indexOf('卡点库') >= 0);
   ok('复习页显示卡片或空态', renders.review.indexOf('复习') >= 0);
   ok('练习页含出题按钮', renders.practice.indexOf('出 3 道题') >= 0);
@@ -202,33 +205,81 @@ function ok(name, cond) {
   const md = Util.mdToHtml('**粗体** 与 $x^2$ 和\n- 列表项\n1. 有序');
   ok('mdToHtml 处理粗体/列表', md.indexOf('<strong>粗体</strong>') >= 0 && md.indexOf('<li>') >= 0);
 
-  /* 14. 内置 OCR 引擎（tesseract 本地化） */
+  /* 14. 2.0 默认设置与 OCR 清除 */
   const sOcr = await Store.getSettings();
-  ok('默认 OCR 引擎为 tesseract（本地离线）', sOcr.ocr.engine === 'tesseract');
-  ok('OCR 语言默认三语（已全部内置）', sOcr.ocr.langs === 'chi_sim+eng+jpn');
-  ok('设置页默认选中本地识别', renders.settings.indexOf('value="tesseract" selected') >= 0);
-  ok('设置页 OCR 文案标注无需联网', renders.settings.indexOf('无需联网') >= 0);
-
-  /* vendor 文件存在性（防漏提交/漏同步进 APK） */
-  const VENDOR_FILES = [
-    'tesseract.min.js', 'worker.min.js',
-    'tesseract.min.js.LICENSE.txt', 'worker.min.js.LICENSE.txt', 'tesseract-core.LICENSE',
-    'core/tesseract-core-simd-lstm.wasm.js', 'core/tesseract-core-simd-lstm.wasm',
-    'core/tesseract-core-lstm.wasm.js', 'core/tesseract-core-lstm.wasm',
-    'tessdata/chi_sim.traineddata', 'tessdata/eng.traineddata', 'tessdata/jpn.traineddata'
-  ];
-  const vendMissing = VENDOR_FILES.filter(f => !fs.existsSync(path.join(ROOT, 'assets/vendor/tesseract', f)));
-  ok('assets/vendor/tesseract 12 个内置文件齐全', vendMissing.length === 0);
+  ok('做题默认学科为日语', sOcr.study.subject === 'japanese');
+  ok('每次出题默认 3 道', sOcr.study.quizCount === 3);
+  ok('设置项里已无 OCR 引擎配置', sOcr.ocr === undefined);
+  ok('设置页识别引擎区块已移除', renders.settings.indexOf('ocrEngine') < 0);
+  ok('设置页含每次出题数量', renders.settings.indexOf('quizCount') >= 0);
+  ok('vendor/tesseract 目录已清除', !fs.existsSync(path.join(ROOT, 'assets/vendor/tesseract')));
 
   /* sw.js 缓存策略 */
   const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-  ok('sw.js 缓存版本已升 v2', swSrc.indexOf('kadian-v2') >= 0);
-  ok('sw.js 预缓存 tesseract 两个小脚本', swSrc.indexOf('./assets/vendor/tesseract/tesseract.min.js') >= 0 && swSrc.indexOf('./assets/vendor/tesseract/worker.min.js') >= 0);
-  ok('sw.js 未把 20MB 语言包装进预缓存清单', swSrc.indexOf('traineddata') < 0);
+  ok('sw.js 缓存版本已升 v3', swSrc.indexOf('kadian-v3') >= 0);
+  ok('sw.js 预缓存清单含 quiz.js', swSrc.indexOf('./assets/js/views/quiz.js') >= 0);
+  ok('sw.js 不再引用 tesseract', swSrc.indexOf('tesseract') < 0);
 
-  /* vision 路由回归 */
-  AI.vision = async () => 'STUB';
-  ok('vision 引擎路由未被破坏', (await sandbox.OCR.run('data:,x', 'vision')) === 'STUB');
+  /* 15. 做题流核心：出题 → 触点精讲 → 学会入库（桩 fetch 走 AI 真实链路） */
+  const quizView = sandbox.window.Views.quiz;
+  quizView.state.subject = 'japanese';
+  /* 第 11 节 replace 导入后 DB 设置为空，先重存 AI 配置 */
+  await Store.saveSettings({ ai: { baseUrl: 'http://127.0.0.1:1/v1', apiKey: 'k', textModel: 'm' } });
+  sandbox.fetch = async (url, opts) => {
+    const prompt = JSON.parse(opts.body).messages[0].content;
+    const content = prompt.indexOf('学生不懂的片段') >= 0
+      ? JSON.stringify({
+        point: '顧みる', meaning: '回首、回顾（过去的事）',
+        examples: [{ src: '三年を顧みる', zh: '回顾这三年' }],
+        usage: '他动词，接续：名词+を+顧みる；多用于回顾往事', mistake: '与「構える」形近，不要混淆',
+        topic: '日语·词汇'
+      })
+      : JSON.stringify({
+        passage: '日本語を勉強し始めてまだ半年だが、顧みれば確かに成長していると感じる。',
+        passageZh: '学日语才半年，但回顾起来确实感觉在成长。',
+        source: '日语阅读·随笔',
+        questions: [
+          { type: 'choice', stem: '文中「顧みる」的意思最接近：', options: ['A. 回顾、回首', 'B. 照顾', 'C. 固执', 'D. 拜访'], answer: 'A', explanation: '顧みる=回首、回顾，此处指回顾过去', point: '顧みる' },
+          { type: 'fill', stem: '「勉強し___てまだ半年」空中填「始め」的て形', answer: '始め', explanation: '〜し始める表示动作开始', point: '〜し始める' }
+        ]
+      });
+    return {
+      ok: true, status: 200,
+      text: async () => JSON.stringify({ choices: [{ message: { content: content } }] })
+    };
+  };
+  const quizRes = await Store.generateQuiz('japanese', 2);
+  ok('generateQuiz 走真实链路生成语篇+题目', quizRes.problems.length === 2 && quizRes.passage.length > 10);
+  ok('做题题目带 kind=quiz 与语篇', quizRes.problems.every(p => p.kind === 'quiz' && p.passage && p.topic));
+  ok('做题题目不进今日队列（无语境的题不裸做）', (await Store.todayQueue()).pendingProblems.every(p => p.kind !== 'quiz'));
+  ok('练习列表过滤掉做题类题目', (await Store.listProblems({ kind: 'plain' })).every(p => p.kind !== 'quiz'));
+  ok('不过滤时做题题目可列出', (await Store.listProblems({})).filter(p => p.kind === 'quiz').length === 2);
+
+  const exp = await AI.explainPoint('japanese', '顧みる', quizRes.passage);
+  ok('explainPoint 返回结构化讲解', exp.point === '顧みる' && exp.examples.length === 1 && exp.topic === '日语·词汇' && exp.mistake.length > 0);
+  const learned = await Store.savePointAsCard('japanese', exp, '顧みる', quizRes.passage, quizRes.source);
+  ok('学会了入库：topic 取自精讲、语篇入 context', learned.topic === '日语·词汇' && learned.question === '顧みる' && learned.context.indexOf('日本語') >= 0);
+  ok('入库卡点进入今日复习队列', (await Store.todayQueue()).dueCards.length === 5);
+
+  /* 题卡与精讲卡 HTML */
+  quizView.state.session = { passage: quizRes.passage, passageZh: quizRes.passageZh, source: quizRes.source, problems: quizRes.problems };
+  const qHtml = quizView.questionHTML(quizRes.problems[0], 0);
+  ok('题卡含选项与考点', qHtml.indexOf('opt-key') >= 0 && qHtml.indexOf('顧みる') >= 0);
+  quizView.state.explains['顧みる'] = { exp: exp, saved: false };
+  const eHtml = quizView.explainCardHTML('顧みる');
+  ok('精讲卡含「学会了，入库」与用法区块', eHtml.indexOf('学会了，入库') >= 0 && eHtml.indexOf('用法') >= 0);
+  quizView.state.explains['顧みる'].saved = true;
+  const eSaved = quizView.explainCardHTML('顧みる');
+  ok('已入库精讲卡显示复习提示', eSaved.indexOf('已入库') >= 0 && eSaved.indexOf('学会了，入库') < 0);
+
+  /* 配置 AI 后重渲染做题页：完整闭环文案（第 15 节开头已存配置） */
+  const qRoot = makeEl();
+  await quizView.render(qRoot, {});
+  ok('做题页宣传全程无断点闭环', qRoot.innerHTML.indexOf('做题 → 不会 → 了解 → 学会') >= 0 && qRoot.innerHTML.indexOf('选中即讲') >= 0);
+
+  /* AI.vision 保留（后续功能预留），不再有本地 OCR 模块 */
+  ok('ai.js 仍保留 vision 能力', typeof sandbox.AI.vision === 'function');
+  ok('OCR 模块已不存在', sandbox.OCR === undefined);
 
   console.log('\n全部通过：' + passed + ' 项断言');
 })().catch(e => { console.error('\n✗ 失败：', e && e.message); process.exit(1); });
