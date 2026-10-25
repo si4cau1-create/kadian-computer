@@ -18,6 +18,7 @@
   --radius-sm: 8px;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
   --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -48,7 +49,7 @@ code {
 .view {
   max-width: 720px;
   margin: 0 auto;
-  padding: 18px 16px calc(84px + var(--safe-b));
+  padding: calc(18px + var(--safe-t)) 16px calc(84px + var(--safe-b));
 }
 .page-head {
   display: flex;
@@ -518,3 +519,36 @@ textarea.input { resize: vertical; line-height: 1.6; }
 .tab.on { color: var(--accent-ink); }
 .tab-icon { width: 22px; height: 22px; }
 .tab-label { font-size: 11px; }
+
+/* ---------- 做题（2.0 核心） ---------- */
+.qz-start { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 16px; }
+.qz-card { background: var(--card); border: 0.5px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.qz-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.qz-src { margin-right: auto; }
+.qz-passage { white-space: pre-wrap; line-height: 1.95; font-size: 15.5px; user-select: text; -webkit-user-select: text; }
+.qz-zh { margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--line); color: var(--muted); font-size: 13.5px; line-height: 1.7; }
+.qz-tip { margin-top: 10px; font-size: 12px; color: var(--faint); line-height: 1.6; }
+.qz-q-head-row { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 10px; }
+.qz-q-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.qz-q-no { font-size: 13px; color: var(--muted); }
+.qz-q-stem { line-height: 1.8; margin-bottom: 10px; }
+.qz-q-ans { font-size: 14px; margin: 8px 0 4px; line-height: 1.7; }
+.qz-q-exp { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
+.qz-summary { text-align: center; padding: 18px 14px; }
+.qz-sum-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+.qz-sum-sub { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.6; }
+.qz-explain { border-left: 3px solid var(--accent); }
+.qe-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.qe-point { font-size: 15px; }
+.qe-sel { font-size: 12px; color: var(--faint); }
+.qe-meaning { font-size: 14.5px; line-height: 1.7; margin-bottom: 8px; }
+.qe-examples { margin: 0 0 8px; padding-left: 0; list-style: none; }
+.qe-examples li { margin-bottom: 6px; line-height: 1.6; }
+.qe-src { display: block; font-size: 14.5px; }
+.qe-zh { display: block; font-size: 13px; color: var(--muted); }
+.qe-sec { font-size: 13.5px; line-height: 1.7; margin-bottom: 6px; }
+.qe-label { display: inline-block; font-size: 11px; color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
+.qe-acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.qe-loading { color: var(--muted); font-size: 14px; padding: 6px 0; }
+.qe-error { color: var(--danger); font-size: 13.5px; margin-bottom: 8px; }
+.qe-saved { font-size: 13px; color: var(--ok); }

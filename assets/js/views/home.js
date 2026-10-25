@@ -11,7 +11,7 @@ window.Views.home = {
     h.push('<div><h1 class="page-title">今日</h1><p class="page-sub">' +
       new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }) +
       ' · 连续 ' + stats.streak + ' 天</p></div>');
-    h.push('<button class="btn btn-primary btn-sm" id="btnAskNow">拍照问</button>');
+    h.push('<button class="btn btn-primary btn-sm" id="btnAskNow">去做题</button>');
     h.push('</div>');
 
     /* 统计卡 */
@@ -26,7 +26,7 @@ window.Views.home = {
     h.push('<div class="section">');
     h.push('<div class="section-head"><h2>今日队列</h2><span class="muted">' + q.total + ' 项</span></div>');
     if (!q.total) {
-      h.push(UI.empty('今天没有待办', '去「拍照问」记一条卡点，或点下面出几道题'));
+      h.push(UI.empty('今天没有待办', '去「做题」来一组题，遇到不会的就地点开讲'));
     } else {
       h.push('<div class="stack">');
       if (q.dueCards.length) {
@@ -68,8 +68,7 @@ window.Views.home = {
     h.push('<div class="section">');
     h.push('<div class="section-head"><h2>快捷入口</h2></div>');
     h.push('<div class="quick-grid">');
-    h.push('<button class="quick" data-act="photo"><span class="quick-t">拍照问</span><span class="quick-s">拍下纸质题，直接要讲解</span></button>');
-    h.push('<button class="quick" data-act="text"><span class="quick-t">文本精讲</span><span class="quick-s">划选一句话，逐句问</span></button>');
+    h.push('<button class="quick" data-act="quiz"><span class="quick-t">做题</span><span class="quick-s">AI 出题，语篇里不会就点开讲</span></button>');
     h.push('<button class="quick" data-act="note"><span class="quick-t">记卡点</span><span class="quick-s">手动录入一个卡住的点</span></button>');
     h.push('<button class="quick" data-act="genweak"><span class="quick-t">出 3 道题</span><span class="quick-s">按最薄弱的点出题</span></button>');
     h.push('</div></div>');
@@ -78,14 +77,13 @@ window.Views.home = {
 
     /* 事件 */
     var photoBtn = root.querySelector('#btnAskNow');
-    if (photoBtn) photoBtn.addEventListener('click', function () { location.hash = '#/ask?mode=photo'; });
+    if (photoBtn) photoBtn.addEventListener('click', function () { location.hash = '#/quiz'; });
 
     root.querySelectorAll('[data-act]').forEach(function (node) {
       var act = node.getAttribute('data-act');
       node.addEventListener('click', async function (e) {
         if (act === 'gen') e.stopPropagation();
-        if (act === 'photo') { location.hash = '#/ask?mode=photo'; }
-        else if (act === 'text') { location.hash = '#/ask?mode=text'; }
+        if (act === 'quiz') { location.hash = '#/quiz'; }
         else if (act === 'note') { location.hash = '#/library?new=1'; }
         else if (act === 'review') { location.hash = '#/review'; }
         else if (act === 'practice') { location.hash = '#/practice'; }

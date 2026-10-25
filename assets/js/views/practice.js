@@ -70,7 +70,7 @@ window.Views.practice = {
       return;
     }
 
-    var list = await Store.listProblems({ status: this.state.mode === 'done' ? 'done' : 'pending' });
+    var list = await Store.listProblems({ status: this.state.mode === 'done' ? 'done' : 'pending', kind: 'plain' });
     if (!list.length) {
       area.innerHTML = this.state.mode === 'done'
         ? UI.empty('还没有做完的题')
@@ -173,7 +173,8 @@ window.Views.practice = {
     }
   },
 
-  pickTopic: async function () {
+  pickTopic: async function (root) {
+    var self = this;
     var ms = await Store.buildMastery();
     if (!ms.length) { UI.toast('还没有卡点数据，先记几条', 'error'); return; }
     var weak = MASTERY.weakFirst(ms);

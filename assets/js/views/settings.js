@@ -25,7 +25,7 @@ window.Views.settings = {
     h.push('<div class="form-row"><label class="form-label">base_url</label><input class="input" id="baseUrl" value="' + Util.escapeAttr(ai.baseUrl || '') + '" placeholder="https://api.deepseek.com/v1" /><div class="form-hint">OpenAI 兼容接口地址，末尾带 /v1</div></div>');
     h.push('<div class="form-row"><label class="form-label">API Key</label><input class="input" id="apiKey" type="password" value="' + Util.escapeAttr(ai.apiKey || '') + '" placeholder="sk-..." /><div class="form-hint">只保存在这台设备的浏览器里，不会上传到任何服务器</div></div>');
     h.push('<div class="form-row"><label class="form-label">文本模型</label><input class="input" id="textModel" value="' + Util.escapeAttr(ai.textModel || '') + '" placeholder="deepseek-chat" /></div>');
-    h.push('<div class="form-row"><label class="form-label">视觉模型（读图用）</label><input class="input" id="visionModel" value="' + Util.escapeAttr(ai.visionModel || '') + '" placeholder="qwen-vl-plus" /><div class="form-hint">DeepSeek 不支持读图，拍照功能需要单独配一个视觉模型</div></div>');
+    h.push('<div class="form-row"><label class="form-label">视觉模型（可选）</label><input class="input" id="visionModel" value="' + Util.escapeAttr(ai.visionModel || '') + '" placeholder="可留空" /><div class="form-hint">2.0 做题流用文本模型即可；视觉模型为后续功能预留</div></div>');
     h.push('<div class="form-row"><label class="form-label">温度</label><input class="input" id="temperature" type="number" step="0.1" min="0" max="1" value="' + (ai.temperature != null ? ai.temperature : 0.3) + '" /></div>');
     h.push('</div>');
     h.push('<div class="row-btns"><button class="btn btn-primary" data-act="saveai">保存配置</button><button class="btn btn-ghost" data-act="test">测试连接</button></div>');
@@ -34,24 +34,16 @@ window.Views.settings = {
     /* --- 跨域提示 --- */
     h.push('<div class="notice notice-info"><div class="notice-title">手机直连被浏览器拦截？</div>' +
       '<p class="notice-text">部分服务商不允许浏览器直接调用（会报 CORS 错误）。这时在电脑上运行 <code>tools/proxy.py</code>，' +
-      '手机把 base_url 改成 <code>http://电脑IP:8899/v1</code> 即可，图片和 Key 都只走你自己的局域网。</p></div>');
-
-    /* --- OCR --- */
-    h.push('<div class="section"><div class="section-head"><h2>识别引擎</h2></div>');
-    h.push('<div class="form"><div class="form-row"><label class="form-label">拍照转文字用</label><select class="input" id="ocrEngine">');
-    h.push('<option value="vision"' + (s.ocr.engine === 'vision' ? ' selected' : '') + '>云端视觉模型（推荐，公式与日文更准）</option>');
-    h.push('<option value="tesseract"' + (s.ocr.engine === 'tesseract' ? ' selected' : '') + '>本地离线识别（内置中/英/日，无需联网）</option>');
-    h.push('</select></div>');
-    h.push('<div class="form-row"><label class="form-label">本地识别语言包</label><input class="input" id="ocrLangs" value="' + Util.escapeAttr(s.ocr.langs || 'chi_sim+eng+jpn') + '" placeholder="chi_sim+eng+jpn" /><div class="form-hint">chi_sim 中文 / eng 英文 / jpn 日文已内置；填写其他语言名时将联网下载对应语言包</div></div>');
-    h.push('</div><div class="row-btns"><button class="btn btn-ghost" data-act="saveocr">保存</button></div></div>');
+      '手机把 base_url 改成 <code>http://电脑IP:8899/v1</code> 即可，Key 只走你自己的局域网。</p></div>');
 
     /* --- 学习 --- */
     h.push('<div class="section"><div class="section-head"><h2>学习</h2></div>');
-    h.push('<div class="form"><div class="form-row"><label class="form-label">默认学科</label><select class="input" id="defSubject">');
+    h.push('<div class="form"><div class="form-row"><label class="form-label">做题默认学科</label><select class="input" id="defSubject">');
     CONFIG.SUBJECTS.forEach(function (sub) {
       h.push('<option value="' + sub.id + '"' + (s.study.subject === sub.id ? ' selected' : '') + '>' + sub.name + '</option>');
     });
-    h.push('</select></div>');
+    h.push('</select><div class="form-hint">日语 / 英语最受益于做题流；其他学科也可用</div></div>');
+    h.push('<div class="form-row"><label class="form-label">每次出题数量</label><input class="input" id="quizCount" type="number" min="1" max="10" value="' + (s.study.quizCount || 3) + '" /><div class="form-hint">1 语篇 + N 道题为一组</div></div>');
     h.push('<div class="form-row"><label class="form-label">每日自动出题数量</label><input class="input" id="dailyCount" type="number" min="0" max="10" value="' + (s.study.dailyPracticeCount || 0) + '" /><div class="form-hint">0 表示只在你点击时出题（避免无谓消耗额度）</div></div>');
     h.push('</div><div class="row-btns"><button class="btn btn-ghost" data-act="savestudy">保存</button></div></div>');
 
@@ -72,8 +64,9 @@ window.Views.settings = {
     h.push('<div class="section"><div class="section-head"><h2>关于</h2></div>');
     h.push('<div class="about">');
     h.push('<p><b>卡点</b>：为「语境滚动 + 即时精讲」设计的本地学习工具。</p>');
-    h.push('<p>核心循环：沉浸材料 → 撞上卡点 → 即时讲解 → 回填验证 → 间隔复习 → AI 出题练应用。</p>');
-    h.push('<p class="muted">所有数据只存在本机；只有调用大模型时才会联网，图片直接发给你配置的服务商。</p>');
+    h.push('<p>核心循环：<b>做题 → 不会 → 了解 → 学会</b>。做题中撞上陌生点，就地展开讲解，听懂一键入库，按遗忘曲线复习。</p>');
+    h.push('<p>「不会」到「了解」零跳转、零等待——不给你"待会儿再查"的空档。</p>');
+    h.push('<p class="muted">所有数据只存在本机；只有调用大模型时才会联网。</p>');
     h.push('</div></div>');
 
     root.innerHTML = h.join('');
@@ -100,7 +93,6 @@ window.Views.settings = {
       var act = node.getAttribute('data-act');
       if (act === 'saveai') self.saveAI(root, presetSel.value);
       else if (act === 'test') self.testConn(root);
-      else if (act === 'saveocr') self.saveOCR(root);
       else if (act === 'savestudy') self.saveStudy(root);
       else if (act === 'export') self.exportData();
       else if (act === 'import') self.importData(root);
@@ -135,20 +127,11 @@ window.Views.settings = {
     }
   },
 
-  saveOCR: async function (root) {
-    await Store.saveSettings({
-      ocr: {
-        engine: root.querySelector('#ocrEngine').value,
-        langs: root.querySelector('#ocrLangs').value.trim() || 'chi_sim+eng+jpn'
-      }
-    });
-    UI.toast('已保存', 'info');
-  },
-
   saveStudy: async function (root) {
     await Store.saveSettings({
       study: {
         subject: root.querySelector('#defSubject').value,
+        quizCount: Math.max(1, Math.min(10, Number(root.querySelector('#quizCount').value) || 3)),
         dailyPracticeCount: Number(root.querySelector('#dailyCount').value) || 0
       }
     });

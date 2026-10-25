@@ -2,7 +2,7 @@
 (function () {
   var ROUTES = {
     '#/home': 'home',
-    '#/ask': 'ask',
+    '#/quiz': 'quiz',
     '#/library': 'library',
     '#/review': 'review',
     '#/practice': 'practice',
@@ -11,7 +11,7 @@
 
   var TABS = [
     { hash: '#/home', name: 'home', label: '今日', icon: 'M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z' },
-    { hash: '#/ask', name: 'ask', label: '拍照问', icon: 'M3 8a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+    { hash: '#/quiz', name: 'quiz', label: '做题', icon: 'M3 17.2V21h3.8L18.5 9.3l-3.8-3.8L3 17.2zM20.7 7.1a1 1 0 0 0 0-1.4l-2.4-2.4a1 1 0 0 0-1.4 0l-1.8 1.8 3.8 3.8 1.8-1.8z' },
     { hash: '#/library', name: 'library', label: '卡点', icon: 'M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h6' },
     { hash: '#/practice', name: 'practice', label: '练习', icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 12l2.5 2.5 4.5-5' },
     { hash: '#/settings', name: 'settings', label: '设置', icon: 'M4 7h16M4 12h16M4 17h16M9 7a1.5 1.5 0 1 0 0-.01M15 12a1.5 1.5 0 1 0 0-.01M8 17a1.5 1.5 0 1 0 0-.01' }
@@ -91,9 +91,9 @@
         UI.modal({
           title: '三步开始用',
           body: '<div class="onboard">' +
-            '<div class="ob-step"><b>1</b><div>到「设置」填一个 base_url、API Key 和模型名。DeepSeek 最便宜；拍照功能需要再填一个视觉模型。</div></div>' +
-            '<div class="ob-step"><b>2</b><div>到「拍照问」拍下纸质题，划选或让模型整题讲；讲完存成卡点。</div></div>' +
-            '<div class="ob-step"><b>3</b><div>每天回来做「复习」和「练习」——练习题是 AI 照着你的薄弱点现编的。</div></div>' +
+            '<div class="ob-step"><b>1</b><div>到「设置」填一个 base_url、API Key 和模型名。DeepSeek 最便宜，国内直连。</div></div>' +
+            '<div class="ob-step"><b>2</b><div>到「做题」：AI 按日语/英语出题，语篇里遇到不会的，点开就是讲解——不用跳出去查。</div></div>' +
+            '<div class="ob-step"><b>3</b><div>听懂了点「学会」，卡点自动入库，之后按遗忘曲线找你复习。</div></div>' +
             '<p class="muted small">所有数据只存在这台设备上。</p></div>',
           actions: [{ label: '去设置', kind: 'btn-primary', onClick: function () { location.hash = '#/settings'; } }]
         });

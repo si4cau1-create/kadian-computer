@@ -1,5 +1,5 @@
 /* Service Worker：离线可用（安装到主屏后没网也能打开） */
-var CACHE = 'kadian-v2';
+var CACHE = 'kadian-v3';
 var SHELL = [
   './',
   './index.html',
@@ -11,12 +11,11 @@ var SHELL = [
   './assets/js/mastery.js',
   './assets/js/util.js',
   './assets/js/ai.js',
-  './assets/js/ocr.js',
   './assets/js/store.js',
   './assets/js/ui.js',
   './assets/js/select.js',
   './assets/js/views/home.js',
-  './assets/js/views/ask.js',
+  './assets/js/views/quiz.js',
   './assets/js/views/library.js',
   './assets/js/views/review.js',
   './assets/js/views/practice.js',
@@ -37,10 +36,7 @@ var SHELL = [
   './assets/vendor/katex/fonts/KaTeX_Size1-Regular.woff2',
   './assets/vendor/katex/fonts/KaTeX_Size2-Regular.woff2',
   './assets/vendor/katex/fonts/KaTeX_Size3-Regular.woff2',
-  './assets/vendor/katex/fonts/KaTeX_Size4-Regular.woff2',
-  /* 本地 OCR 引擎脚本（小文件预缓存；core/wasm/语言包约 20MB 不预装，首次使用时经下方 fetch 处理器运行时缓存） */
-  './assets/vendor/tesseract/tesseract.min.js',
-  './assets/vendor/tesseract/worker.min.js'
+  './assets/vendor/katex/fonts/KaTeX_Size4-Regular.woff2'
 ];
 
 self.addEventListener('install', function (e) {

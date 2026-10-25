@@ -13,10 +13,10 @@ var Store = (function () {
       maxTokens: 2000,
       extraHeaders: {}
     },
-    ocr: { engine: 'tesseract', langs: 'chi_sim+eng+jpn' },
     study: {
       dailyPracticeCount: 0,   // 0 = 只手动出题
-      subject: 'math'          // 出题默认学科
+      subject: 'japanese',     // 做题默认学科（日语 / 英语为主）
+      quizCount: 3             // 每次出题数量
     },
     lastPracticeDate: '',
     practiceCountToday: 0
@@ -155,6 +155,8 @@ var Store = (function () {
     var out = all.filter(function (p) {
       if (filter.subject && filter.subject !== 'all' && p.subject !== filter.subject) return false;
       if (filter.status && p.status !== filter.status) return false;
+      /* kind:'plain' 排除做题会话产生的题目（它们自带语篇，只在做题流里出现） */
+      if (filter.kind === 'plain' && p.kind === 'quiz') return false;
       return true;
     });
     out.sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
@@ -179,7 +181,13 @@ var Store = (function () {
     var expected = String(problem.answer || '').split('|').map(function (s) { return s.trim(); });
     if (!ua) return false;
     if (problem.type === 'choice') {
-      return expected.some(function (e) { return normAnswer(e).toUpperCase() === ua.toUpperCase(); });
+      /* 界面回传的可能是完整选项文本（"A. 回顾、回首"），也可能是选项键（"A"）——两种都要能判 */
+      var m = String(userAnswer).trim().match(/^[（(]?([A-Za-z])[)）.．、]?\s/);
+      var uaKey = m ? m[1].toUpperCase() : ua.toUpperCase();
+      return expected.some(function (e) {
+        var en = normAnswer(e).toUpperCase();
+        return en === uaKey || en === ua.toUpperCase();
+      });
     }
     return expected.some(function (e) {
       var en = normAnswer(e);
@@ -327,11 +335,72 @@ var Store = (function () {
     return { target: { subject: subject, topic: topic }, problems: problems };
   }
 
+  /* ---------- 做题（2.0 核心）：API 出题 + 语篇触点精讲 + 一键入库 ---------- */
+
+  /* 生成一组做题（语篇 + 题目），题目存入 problems（kind: 'quiz'） */
+  async function generateQuiz(subject, count) {
+    count = count || 3;
+    var quiz = await AI.generateQuiz(subject, count);
+    if (!quiz.questions.length) throw new Error('模型没有生成题目');
+    var problems = quiz.questions.map(function (q) {
+      return {
+        id: uid(),
+        kind: 'quiz',
+        type: q.type,
+        stem: String(q.stem || ''),
+        options: Array.isArray(q.options) ? q.options.map(String) : [],
+        answer: q.answer != null ? String(q.answer) : '',
+        explanation: String(q.explanation || ''),
+        point: String(q.point || ''),
+        passage: quiz.passage || '',
+        passageZh: quiz.passageZh || '',
+        source: quiz.source || '',
+        subject: subject,
+        topic: String(q.point || '未分类'),
+        status: 'pending',
+        userAnswer: '',
+        correct: null,
+        createdAt: nowISO(),
+        doneAt: ''
+      };
+    });
+    await DB.bulkPut('problems', problems);
+    return {
+      passage: quiz.passage || '',
+      passageZh: quiz.passageZh || '',
+      source: quiz.source || '',
+      problems: problems
+    };
+  }
+
+  /* 「学会了」一键入库：触点精讲结果 → 卡点（零填表， topic 由精讲结果带出） */
+  async function savePointAsCard(subject, exp, sel, passage, source) {
+    exp = exp || {};
+    var answer = '**' + (exp.point || sel || '') + '**\n\n' +
+      (exp.meaning ? exp.meaning + '\n\n' : '') +
+      (exp.examples && exp.examples.length
+        ? exp.examples.map(function (e) {
+          return '- ' + e.src + (e.zh ? '　' + e.zh : '');
+        }).join('\n') + '\n\n'
+        : '') +
+      (exp.usage ? '**用法**：' + exp.usage + '\n\n' : '') +
+      (exp.mistake ? '**常见误用**：' + exp.mistake : '');
+    var card = {
+      subject: subject,
+      topic: exp.topic || '未分类',
+      question: exp.point || String(sel || '').slice(0, 60),
+      context: String(passage || '').slice(0, 500),
+      answer: answer,
+      source: source || '做题 · 即时精讲'
+    };
+    return await saveStuck(card);
+  }
+
   /* ---------- 今日队列 ---------- */
   async function todayQueue() {
     var cards = await DB.all('stuckPoints');
     var due = SRS.dueCards(cards);
-    var problems = await listProblems({ status: 'pending' });
+    var problems = await listProblems({ status: 'pending', kind: 'plain' });
     return {
       dueCards: due,
       pendingProblems: problems,
@@ -425,6 +494,8 @@ var Store = (function () {
     generateForWeak: generateForWeak,
     generateForCard: generateForCard,
     generateForTopic: generateForTopic,
+    generateQuiz: generateQuiz,
+    savePointAsCard: savePointAsCard,
     todayQueue: todayQueue,
     stats: stats,
     exportAll: exportAll,
