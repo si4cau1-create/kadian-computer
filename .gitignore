@@ -1,0 +1,6 @@
+# 本地开发忽略项
+.workbuddy/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

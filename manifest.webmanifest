@@ -1,0 +1,19 @@
+{
+  "name": "卡点 · 语境滚动学习",
+  "short_name": "卡点",
+  "description": "在真题与语篇中滚动遇到陌生点，当场精准查询讲解，自动入库并按遗忘曲线复习，还能让 AI 照着你的薄弱点现编练习题。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f6f3",
+  "theme_color": "#f6f6f3",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
