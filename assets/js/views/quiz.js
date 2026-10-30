@@ -134,6 +134,26 @@ window.Views.quiz = {
     }
   },
 
+  /* 当前交互模式的提示文案：键鼠划词 / 触屏点词 */
+  tipText: function () {
+    var s = this.state.session;
+    if (s && s.marked) return '带下划线的就是即点区域，点一下直接讲；也可以选中任意片段提问';
+    return InputMode.isMouse()
+      ? '选中不懂的词或句子，点弹出的「讲一下」——当场讲完接着做题，不跳页'
+      : '点不懂的词就直接讲——当场讲完接着做题，不跳页';
+  },
+
+  modeLabel: function () {
+    return InputMode.isMouse() ? '键鼠模式 · 划词提问' : '触屏模式 · 点词即讲';
+  },
+
+  refreshTip: function (root) {
+    var tip = root.querySelector('#qzTip');
+    if (tip) tip.textContent = this.tipText();
+    var md = root.querySelector('#qzMode');
+    if (md) md.textContent = this.modeLabel();
+  },
+
   /* ---------- 会话渲染 ---------- */
   renderSession: function (root) {
     var self = this;
@@ -147,12 +167,11 @@ window.Views.quiz = {
     h.push('<div class="qz-card qz-passage-card">');
     h.push('<div class="qz-card-top">' + UI.subjectTag(this.state.subject) +
       '<span class="muted small qz-src">' + Util.esc(s.source || '') + '</span>' +
+      '<span class="muted small qz-mode" id="qzMode">' + Util.esc(this.modeLabel()) + '</span>' +
       (s.passageZh ? '<button class="btn btn-ghost btn-xs" data-act="zh">显示翻译</button>' : '') + '</div>');
     h.push('<div class="qz-passage" id="qzPassage">' + this.passageHTML(s.passageText, s.marked) + '</div>');
     if (s.passageZh) h.push('<div class="qz-zh" id="qzZh" style="display:none">' + Util.esc(s.passageZh) + '</div>');
-    h.push('<div class="qz-tip">' + (s.marked
-      ? '带下划线的就是即点区域，点一下直接讲；也可以选中任意片段提问'
-      : '选中不懂的词或句子，点弹出的「讲一下」——当场讲完接着做题，不跳页') + '</div>');
+    h.push('<div class="qz-tip" id="qzTip">' + Util.esc(this.tipText()) + '</div>');
     h.push('<div class="row-btns">');
     if (!s.marked) {
       h.push('<button class="btn btn-ghost btn-xs" data-act="markpts">标记知识点</button>');
@@ -177,6 +196,15 @@ window.Views.quiz = {
     var passage = root.querySelector('#qzPassage');
     if (passage) {
       Select.enable(passage, function (sel) { self.explain(root, sel); }, '讲一下');
+      /* 触屏：点词即讲（键鼠模式交给划词；插上键鼠会自动切走） */
+      passage.addEventListener('click', function (e) {
+        if (InputMode.isMouse()) return;
+        if (e.target.closest && e.target.closest('.qz-mark')) return;      /* 即点区域走自己的分支 */
+        var picked = window.getSelection ? String(window.getSelection() || '').trim() : '';
+        if (picked) return;                                                /* 已长按选中 → 不重复触发 */
+        var w = InputMode.wordAt(e.clientX, e.clientY, self.state.subject);
+        if (w) self.explain(root, w);
+      });
     }
     window.scrollTo(0, 0);
   },

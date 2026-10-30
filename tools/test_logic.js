@@ -10,7 +10,7 @@ const { webcrypto } = require('crypto');
 const ROOT = 'E:/workbuddy code/kadian';
 const FILES = [
   'assets/js/config.js', 'assets/js/db.js', 'assets/js/srs.js', 'assets/js/mastery.js',
-  'assets/js/util.js', 'assets/js/marks.js', 'assets/js/ai.js', 'assets/js/store.js',
+  'assets/js/util.js', 'assets/js/marks.js', 'assets/js/input.js', 'assets/js/ai.js', 'assets/js/store.js',
   'assets/js/ui.js', 'assets/js/select.js',
   'assets/js/views/home.js', 'assets/js/views/quiz.js', 'assets/js/views/library.js',
   'assets/js/views/review.js', 'assets/js/views/practice.js', 'assets/js/views/settings.js',
@@ -80,7 +80,7 @@ for (const f of FILES) {
   vm.runInContext(code, ctx, { filename: f });
   loaded.push(f);
 }
-const { DB, Store, AI, Util, CONFIG, Marks } = sandbox;
+const { DB, Store, AI, Util, CONFIG, Marks, InputMode } = sandbox;
 const location = sandbox.location;
 
 /* ---------- 测试 ---------- */
@@ -350,6 +350,34 @@ function ok(name, cond) {
   ok('起始页列出题库并有开始做题入口', idleHost.innerHTML.indexOf('开始做题') >= 0 && idleHost.innerHTML.indexOf('识别知识点') >= 0);
   ok('其它学科标注敬请期待', idleHost.innerHTML.indexOf('敬请期待') >= 0 && idleHost.innerHTML.indexOf('chip-soon') >= 0);
   ok('日语/英语标为可用', (idleHost.innerHTML.match(/data-ready="1"/g) || []).length === 2);
+
+
+  /* 17. 输入模式自适应（键鼠划词 / 触屏点词） */
+  ok('InputMode 默认可切换', typeof sandbox.InputMode.set === 'function' && typeof sandbox.InputMode.current === 'function');
+  sandbox.InputMode.set('mouse');
+  ok('切到 mouse 模式', sandbox.InputMode.isMouse() === true && sandbox.InputMode.current() === 'mouse');
+  sandbox.InputMode.set('touch');
+  ok('切到 touch 模式', sandbox.InputMode.isTouch() === true);
+  let modeChanged = 0;
+  sandbox.InputMode.onChange(function () { modeChanged++; });
+  sandbox.InputMode.set('mouse');
+  sandbox.InputMode.set('touch');
+  ok('模式变化通知监听者', modeChanged === 2, '变化次数 ' + modeChanged);
+
+  const jaWords = sandbox.InputMode.wordsOf('日本語を勉強し始めて', 'japanese').map(w => w.text);
+  ok('日语分词（Intl.Segmenter）', jaWords.indexOf('日本語') >= 0 && jaWords.indexOf('勉強') >= 0, JSON.stringify(jaWords));
+  const enWords = sandbox.InputMode.wordsOf('I began studying Japanese', 'english').map(w => w.text);
+  ok('英语分词', enWords.indexOf('Japanese') >= 0 && enWords.indexOf('studying') >= 0, JSON.stringify(enWords));
+
+  /* 点词：模拟 caretRangeFromPoint 命中某个偏移 */
+  const fakeDoc = sandbox.document;
+  const origCaret = fakeDoc.caretRangeFromPoint;
+  fakeDoc.caretRangeFromPoint = function () {
+    return { startContainer: { nodeType: 3, textContent: '日本語を勉強し始めて', firstChild: null }, startOffset: 0 };
+  };
+  const picked = sandbox.InputMode.wordAt(10, 20, 'japanese');
+  fakeDoc.caretRangeFromPoint = origCaret;
+  ok('点词取到所在词', picked === '日本語', picked);
 
   console.log('\n全部通过：' + passed + ' 项断言');
 })().catch(e => { console.error('\n✗ 失败：', e && e.message); process.exit(1); });

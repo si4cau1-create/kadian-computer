@@ -555,7 +555,41 @@ textarea.input { resize: vertical; line-height: 1.6; }
 .qe-loading { color: var(--muted); font-size: 14px; padding: 6px 0; }
 .qe-error { color: var(--danger); font-size: 13.5px; margin-bottom: 8px; }
 .qe-saved { font-size: 13px; color: var(--ok); }
+
+/* ---------- 平板 / 宽屏自适应（同一套代码，手机与平板通用） ---------- */
+@media (min-width: 768px) {
+  :root { --radius: 14px; }
+  .view {
+    max-width: 900px;
+    padding-left: 28px;
+    padding-right: 28px;
+    font-size: 16px;
+  }
+  .tabbar { max-width: 900px; }
+  .page-title { font-size: 28px; }
+  .page-sub { font-size: 14px; }
+  .qz-card { padding: 18px 22px; }
+  .qz-passage { font-size: 17.5px; line-height: 2.05; }
+  .qz-q-stem { font-size: 16.5px; }
+  .qz-tip { font-size: 13px; }
+  .btn { font-size: 15px; padding: 10px 16px; }
+  .btn-sm { font-size: 14px; padding: 8px 14px; }
+  .tab { font-size: 12px; padding: 9px 0 8px; }
+  .tab-icon { width: 25px; height: 25px; }
+  .tab-label { font-size: 12px; }
+  .input { font-size: 16px; }          /* 平板上 16px 以下会触发自动放大 */
+  .opt { padding: 12px 14px; }
+  .float-select { font-size: 14px; }
+}
+
+@media (min-width: 1024px) {
+  .view { max-width: 1000px; }
+  .tabbar { max-width: 1000px; }
+  .qz-passage { font-size: 18px; }
+}
 .qe-cached { font-size: 11px; color: var(--muted); background: rgba(0, 0, 0, .05); border-radius: 4px; padding: 1px 6px; }
+.qz-mode { margin-right: auto; }
+.qz-src { margin-right: 0; }
 
 /* 即点即学：题库里标出的语法点渲染成可点下划线 */
 .qz-mark {

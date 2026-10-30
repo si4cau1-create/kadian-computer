@@ -65,6 +65,13 @@
     await DB.init();
     await Store.getSettings();
 
+    /* 输入模式：键鼠 → 划词提问；触屏 → 点词即讲（插上键鼠自动切换） */
+    InputMode.init();
+    InputMode.onChange(function () {
+      var q = window.Views && window.Views.quiz;
+      if (q && q.refreshTip) q.refreshTip(document.getElementById('view'));
+    });
+
     var bar = document.getElementById('tabbar');
     bar.innerHTML = TABS.map(tabHTML).join('');
     bar.addEventListener('click', function (e) {
