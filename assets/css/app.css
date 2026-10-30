@@ -129,6 +129,9 @@ code {
 }
 .chip.on { background: var(--c, var(--accent)); border-color: var(--c, var(--accent)); color: #fff; }
 .subject-pick .chip.on { color: #fff; }
+/* 其它学科：暂未适配这种学法 → 敬请期待（置灰不可选） */
+.chip-soon { opacity: .55; border-style: dashed; }
+.chip-soon-t { margin-left: 5px; font-size: 11px; opacity: .85; }
 
 .tag {
   display: inline-block;
@@ -552,3 +555,21 @@ textarea.input { resize: vertical; line-height: 1.6; }
 .qe-loading { color: var(--muted); font-size: 14px; padding: 6px 0; }
 .qe-error { color: var(--danger); font-size: 13.5px; margin-bottom: 8px; }
 .qe-saved { font-size: 13px; color: var(--ok); }
+.qe-cached { font-size: 11px; color: var(--muted); background: rgba(0, 0, 0, .05); border-radius: 4px; padding: 1px 6px; }
+
+/* 即点即学：题库里标出的语法点渲染成可点下划线 */
+.qz-mark {
+  border-bottom: 1.5px dashed var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+.qz-mark:active { background: var(--accent-soft); }
+
+/* 题库列表 */
+.pz-item { background: var(--card); border: 0.5px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.pz-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.pz-top b { font-size: 14.5px; font-weight: 500; }
+.pz-meta { font-size: 12px; color: var(--muted); }
+.pz-text { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }

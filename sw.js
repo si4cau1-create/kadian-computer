@@ -10,6 +10,7 @@ var SHELL = [
   './assets/js/srs.js',
   './assets/js/mastery.js',
   './assets/js/util.js',
+  './assets/js/marks.js',
   './assets/js/ai.js',
   './assets/js/store.js',
   './assets/js/ui.js',

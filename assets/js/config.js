@@ -1,14 +1,14 @@
 /* 全局配置：学科定义、AI 服务商预设、角色提示词 */
 var CONFIG = (function () {
   var SUBJECTS = [
-    { id: 'math', name: '数学', color: '#378ADD' },
-    { id: 'physics', name: '物理', color: '#1D9E75' },
-    { id: 'chemistry', name: '化学', color: '#D85A30' },
-    { id: 'biology', name: '生物', color: '#639922' },
+    { id: 'math', name: '数学', color: '#378ADD', beta: false },
+    { id: 'physics', name: '物理', color: '#1D9E75', beta: false },
+    { id: 'chemistry', name: '化学', color: '#D85A30', beta: false },
+    { id: 'biology', name: '生物', color: '#639922', beta: false },
     { id: 'japanese', name: '日语', color: '#7F77DD' },
     { id: 'english', name: '英语', color: '#D4537E' },
-    { id: 'chinese', name: '语文', color: '#BA7517' },
-    { id: 'other', name: '其他', color: '#888780' }
+    { id: 'chinese', name: '语文', color: '#BA7517', beta: false },
+    { id: 'other', name: '其他', color: '#888780', beta: false }
   ];
 
   /* 学科角色：决定讲解的口吻与结构 */

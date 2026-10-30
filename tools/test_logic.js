@@ -10,7 +10,7 @@ const { webcrypto } = require('crypto');
 const ROOT = 'E:/workbuddy code/kadian';
 const FILES = [
   'assets/js/config.js', 'assets/js/db.js', 'assets/js/srs.js', 'assets/js/mastery.js',
-  'assets/js/util.js', 'assets/js/ai.js', 'assets/js/store.js',
+  'assets/js/util.js', 'assets/js/marks.js', 'assets/js/ai.js', 'assets/js/store.js',
   'assets/js/ui.js', 'assets/js/select.js',
   'assets/js/views/home.js', 'assets/js/views/quiz.js', 'assets/js/views/library.js',
   'assets/js/views/review.js', 'assets/js/views/practice.js', 'assets/js/views/settings.js',
@@ -80,7 +80,7 @@ for (const f of FILES) {
   vm.runInContext(code, ctx, { filename: f });
   loaded.push(f);
 }
-const { DB, Store, AI, Util, CONFIG } = sandbox;
+const { DB, Store, AI, Util, CONFIG, Marks } = sandbox;
 const location = sandbox.location;
 
 /* ---------- 测试 ---------- */
@@ -225,24 +225,41 @@ function ok(name, cond) {
   quizView.state.subject = 'japanese';
   /* 第 11 节 replace 导入后 DB 设置为空，先重存 AI 配置 */
   await Store.saveSettings({ ai: { baseUrl: 'http://127.0.0.1:1/v1', apiKey: 'k', textModel: 'm' } });
+  let fetchCount = 0;
   sandbox.fetch = async (url, opts) => {
+    fetchCount++;
     const prompt = JSON.parse(opts.body).messages[0].content;
-    const content = prompt.indexOf('学生不懂的片段') >= 0
-      ? JSON.stringify({
+    let content;
+    if (prompt.indexOf('值得学生专门学') >= 0) {
+      /* 识别知识点：返回带 |{|…|}| 标记的语篇（原文照抄，只加标记） */
+      content = '日本語を勉強し始めて|{|まだ半年|}|だが、顧みれば|{|確かに成長している|}|と感じる。';
+    } else if (prompt.indexOf('要学的点') >= 0 || prompt.indexOf('不懂的片段') >= 0) {
+      /* 触点精讲 / 即点即学：结构化讲解 */
+      content = JSON.stringify({
         point: '顧みる', meaning: '回首、回顾（过去的事）',
         examples: [{ src: '三年を顧みる', zh: '回顾这三年' }],
         usage: '他动词，接续：名词+を+顧みる；多用于回顾往事', mistake: '与「構える」形近，不要混淆',
         topic: '日语·词汇'
-      })
-      : JSON.stringify({
+      });
+    } else if (prompt.indexOf('基于这段语篇出') >= 0) {
+      /* 基于题库语篇出题 */
+      content = JSON.stringify({
+        questions: [
+          { type: 'choice', stem: '题库语篇出的题', options: ['A. 甲', 'B. 乙', 'C. 丙', 'D. 丁'], answer: 'A', explanation: '解析', point: '顧みる' }
+        ]
+      });
+    } else {
+      /* AI 现造语篇 + 题目 */
+      content = JSON.stringify({
         passage: '日本語を勉強し始めてまだ半年だが、顧みれば確かに成長していると感じる。',
         passageZh: '学日语才半年，但回顾起来确实感觉在成长。',
         source: '日语阅读·随笔',
         questions: [
           { type: 'choice', stem: '文中「顧みる」的意思最接近：', options: ['A. 回顾、回首', 'B. 照顾', 'C. 固执', 'D. 拜访'], answer: 'A', explanation: '顧みる=回首、回顾，此处指回顾过去', point: '顧みる' },
-          { type: 'fill', stem: '「勉強し___てまだ半年」空中填「始め」的て形', answer: '始め', explanation: '〜し始める表示动作开始', point: '〜し始める' }
+          { type: 'fill', stem: '「勉強し___てまだ半年」空中填「始め」のて形', answer: '始め', explanation: '〜し始める表示动作开始', point: '〜し始める' }
         ]
       });
+    }
     return {
       ok: true, status: 200,
       text: async () => JSON.stringify({ choices: [{ message: { content: content } }] })
@@ -275,11 +292,64 @@ function ok(name, cond) {
   /* 配置 AI 后重渲染做题页：完整闭环文案（第 15 节开头已存配置） */
   const qRoot = makeEl();
   await quizView.render(qRoot, {});
-  ok('做题页宣传全程无断点闭环', qRoot.innerHTML.indexOf('做题 → 不会 → 了解 → 学会') >= 0 && qRoot.innerHTML.indexOf('选中即讲') >= 0);
+  ok('做题页宣传全程无断点闭环', qRoot.innerHTML.indexOf('做题 → 不会 → 了解 → 学会') >= 0);
 
   /* AI.vision 保留（后续功能预留），不再有本地 OCR 模块 */
   ok('ai.js 仍保留 vision 能力', typeof sandbox.AI.vision === 'function');
   ok('OCR 模块已不存在', sandbox.OCR === undefined);
+
+
+  /* 16. 题库 / 即点即学 / 精讲缓存（2.0 第二批） */
+  ok('Marks 解析出即点区域', JSON.stringify(Marks.list('A|{|語point|}|B')) === '["語point"]');
+  ok('Marks 去标记得纯文本', Marks.strip('A|{|x|}|B') === 'AxB');
+  ok('Marks 未闭合标记不吞内容', Marks.strip('A|{|未闭合') === 'A|{|未闭合');
+  ok('Marks 加标记', Marks.wrap('abcd', ['bc']) === 'a|{|bc|}|d');
+
+  const pz = await Store.savePassage({
+    subject: 'japanese', title: '测试语篇', source: '单元测试',
+    text: '日本語を勉強し始めて|{|まだ半年|}|だが'
+  });
+  ok('题库语篇保存时解析出即点区域', pz.markCount === 1 && pz.plain === '日本語を勉強し始めてまだ半年だが' && pz.marks[0] === 'まだ半年');
+  ok('题库按学科可列出', (await Store.listPassages({ subject: 'japanese' })).some(p => p.id === pz.id));
+
+  /* 识别知识点：API 返回带标记语篇 → 回写 */
+  const markedText = await Store.detectPoints('japanese', pz.plain);
+  ok('识别知识点返回带标记语篇', markedText.indexOf('|{|') >= 0);
+  const pz2 = await Store.updatePassageMarks(pz.id, markedText);
+  ok('识别结果回写后即点区域增加', pz2.markCount === 2, 'count=' + pz2.markCount);
+
+  /* 基于题库语篇出题（不出新语篇） */
+  const pzQuiz = await Store.generateQuizFromPassage('japanese', pz2.text, 2);
+  ok('基于题库语篇出题', pzQuiz.problems.length === 1 && pzQuiz.problems[0].passage.indexOf('|{|') < 0);
+
+  /* 精讲缓存：同一片段只问一次 */
+  const exp2 = await AI.explainPoint('japanese', 'まだ半年', '语篇');
+  await Store.saveCachedExplain('japanese', 'まだ半年', exp2);
+  const hit = await Store.getCachedExplain('japanese', 'まだ半年');
+  ok('精讲缓存命中', !!hit && hit.point === '顧みる');
+  ok('不同学科不串缓存', (await Store.getCachedExplain('english', 'まだ半年')) === null);
+
+  /* 缓存命中时不再发 API 请求 */
+  const before = fetchCount;
+  const cacheRoot = makeEl();
+  quizView.state.session = { passageText: pz2.text, marked: true, source: '题库', problems: [] };
+  await quizView.explain(cacheRoot, 'まだ半年', { marked: true });
+  ok('缓存命中不再调用 API', fetchCount === before, 'fetch: ' + before + '→' + fetchCount);
+
+  /* 即点区域渲染成下划线可点 */
+  const mk = quizView.passageHTML(pz2.text, true);
+  ok('即点区域渲染成 .qz-mark 且带原文', mk.indexOf('class="qz-mark"') >= 0 && mk.indexOf('data-text="まだ半年"') >= 0);
+
+  /* 起始页：题库列表 + 其它学科敬请期待 */
+  const idleHost = makeEl();
+  const fakeRoot = {
+    querySelector: (sel) => (sel === '#qzIdle' ? idleHost : makeEl()),
+    querySelectorAll: () => []
+  };
+  await quizView.renderIdle(fakeRoot);
+  ok('起始页列出题库并有开始做题入口', idleHost.innerHTML.indexOf('开始做题') >= 0 && idleHost.innerHTML.indexOf('识别知识点') >= 0);
+  ok('其它学科标注敬请期待', idleHost.innerHTML.indexOf('敬请期待') >= 0 && idleHost.innerHTML.indexOf('chip-soon') >= 0);
+  ok('日语/英语标为可用', (idleHost.innerHTML.match(/data-ready="1"/g) || []).length === 2);
 
   console.log('\n全部通过：' + passed + ' 项断言');
 })().catch(e => { console.error('\n✗ 失败：', e && e.message); process.exit(1); });
