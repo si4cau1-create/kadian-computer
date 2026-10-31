@@ -13,7 +13,7 @@ const FILES = [
   'assets/js/util.js', 'assets/js/marks.js', 'assets/js/input.js', 'assets/js/ai.js', 'assets/js/store.js',
   'assets/js/ui.js', 'assets/js/select.js',
   'assets/js/views/home.js', 'assets/js/views/quiz.js', 'assets/js/views/library.js',
-  'assets/js/views/review.js', 'assets/js/views/practice.js', 'assets/js/views/settings.js',
+  'assets/js/views/review.js', 'assets/js/views/practice.js', 'assets/js/views/words.js', 'assets/js/views/settings.js',
   'assets/js/main.js'
 ];
 
@@ -241,6 +241,18 @@ function ok(name, cond) {
         usage: '他动词，接续：名词+を+顧みる；多用于回顾往事', mistake: '与「構える」形近，不要混淆',
         topic: '日语·词汇'
       });
+    } else if (prompt.indexOf('结构化词条') >= 0) {
+      /* 词条生成 */
+      content = JSON.stringify({ words: [
+        { word: '売り上げる', reading: 'うりあげる', pos: 'v2', transitivity: 'vt', meaning: '售出', example: 'この店は去年、物件を売り上げた。', exampleZh: '这家店去年把房子卖了。' },
+        { word: '手続き', reading: 'てつづき', pos: 'n', transitivity: '', meaning: '手续', example: '手続きを済ませた。', exampleZh: '办完了手续。' }
+      ] });
+    } else if (prompt.indexOf('词汇量评估') >= 0) {
+      /* 词汇量调查 */
+      content = JSON.stringify({ results: [
+        { word: '売り上げる', known: false, reason: '复杂动词，需查词典' },
+        { word: '手続き', known: true, reason: '基础名词' }
+      ] });
     } else if (prompt.indexOf('基于这段语篇出') >= 0) {
       /* 基于题库语篇出题 */
       content = JSON.stringify({
@@ -378,6 +390,41 @@ function ok(name, cond) {
   const picked = sandbox.InputMode.wordAt(10, 20, 'japanese');
   fakeDoc.caretRangeFromPoint = origCaret;
   ok('点词取到所在词', picked === '日本語', picked);
+
+
+  /* 18. 单词背诵板块（词表 → 词条 → SM-2 背诵） */
+  const wl = Store.parseWordList('売り上げる\n顧みる\n\n- 手続き\n* ，此前\n' +
+    '重複\n重複\n読み仮名(よみがな)');
+  ok('解析纯文本词表', wl.length >= 5 && wl[0].word === '売り上げる', JSON.stringify(wl.map(w => w.word)));
+  ok('解析 markdown 列表项', wl.some(w => w.word === '手続き'));
+  ok('解析「单词(假名)」并拆出读音', (wl.find(w => w.word === '読み仮名') || {}).reading === 'よみがな');
+  ok('词表去重', (wl.filter(w => w.word === '重複').length) === 1);
+
+  const list = await Store.importWordList('japanese', '新标日 第3课', '売り上げる\n顧みる\n手続き');
+  ok('导入词表并计数', list.count === 3 && list.items.length === 3);
+  ok('词表可按学科列出', (await Store.listWordLists({ subject: 'japanese' })).some(l => l.id === list.id));
+
+  const entries = await Store.generateWordEntries('japanese', list.id);
+  ok('生成词条（含词性/及物性/释义/例句）', entries.length === 2 &&
+    entries[0].pos === 'v2' && entries[0].transitivity === 'vt' && entries[0].example.length > 0);
+  const words = await Store.listWords({ listId: list.id });
+  ok('词条入库且可按词表列出', words.length === 2 && words[0].srs && words[0].status === 'new');
+  ok('词条初始为待背', (await Store.dueWords('japanese')).length >= 2);
+
+  const w0 = words[0];
+  const r1 = await Store.reviewWord(w0.id, 4);
+  ok('背完「认识」→ SM-2 排期', r1.srs.reps === 1 && r1.srs.interval === 1 && r1.reviewCount === 1);
+  const r2 = await Store.reviewWord(w0.id, 4);
+  ok('连续认识 → 状态转已掌握', r2.srs.reps === 2 && r2.status === 'known', 'status=' + r2.status);
+  const r3 = await Store.reviewWord(w0.id, 1);
+  ok('「不认识」→ 重置间隔', r3.srs.reps === 0 && r3.srs.interval === 1);
+
+  const st = await Store.wordStats('japanese');
+  ok('单词统计正确', st.total === 2 && st.fresh === 1, JSON.stringify(st));
+
+  /* 词汇量调查：未掌握的词 → 供转即点区域 */
+  const checked = await AI.checkVocabulary('japanese', [{ word: '売り上げる' }, { word: '手続き' }]);
+  ok('词汇量调查返回逐词判定', checked.length === 2 && typeof checked[0].known === 'boolean');
 
   console.log('\n全部通过：' + passed + ' 项断言');
 })().catch(e => { console.error('\n✗ 失败：', e && e.message); process.exit(1); });

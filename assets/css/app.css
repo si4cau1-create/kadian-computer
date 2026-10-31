@@ -591,15 +591,22 @@ textarea.input { resize: vertical; line-height: 1.6; }
 .qz-mode { margin-right: auto; }
 .qz-src { margin-right: 0; }
 
-/* 即点即学：题库里标出的语法点渲染成可点下划线 */
+/* 即点即学：题库里标出的语法点/单词渲染成可点下划线 */
 .qz-mark {
   border-bottom: 1.5px dashed var(--accent);
+  background: var(--accent-soft);
   color: var(--accent-ink);
   cursor: pointer;
-  padding: 0 1px;
-  border-radius: 2px;
+  padding: 0 2px;
+  border-radius: 3px;
 }
-.qz-mark:active { background: var(--accent-soft); }
+.qz-mark:active { background: #d4e6f8; }
+
+/* 划词提问：就地展开的输入条（不遮罩、不跳页） */
+.qz-ask { background: var(--card); border: 1px solid var(--accent); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+.qz-ask-sel { font-size: 13px; color: var(--accent-ink); margin-bottom: 8px; line-height: 1.5; }
+.qz-ask-input { font-size: 15px; margin-bottom: 8px; }
+.qz-ask-acts { display: flex; gap: 8px; }
 
 /* 题库列表 */
 .pz-item { background: var(--card); border: 0.5px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
@@ -607,3 +614,29 @@ textarea.input { resize: vertical; line-height: 1.6; }
 .pz-top b { font-size: 14.5px; font-weight: 500; }
 .pz-meta { font-size: 12px; color: var(--muted); }
 .pz-text { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+
+/* ---------- 单词（背诵板块） ---------- */
+.wl-item { background: var(--card); border: 0.5px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.wl-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.wl-top b { font-size: 14.5px; font-weight: 500; }
+.word-row { background: var(--card); border: 0.5px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; }
+.word-row.known { border-left: 3px solid var(--ok); }
+.wr-main { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.wr-word { font-size: 15px; font-weight: 500; }
+.wr-reading { font-size: 12.5px; color: var(--muted); }
+.wr-pos { font-size: 11.5px; color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px; padding: 1px 6px; }
+.wr-meaning { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.6; }
+
+.recite-bar { height: 4px; border-radius: 2px; background: rgba(0, 0, 0, .07); margin-bottom: 14px; overflow: hidden; }
+.recite-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .2s ease; }
+.recite-card { text-align: center; padding: 28px 20px 22px; }
+.recite-word { font-size: 30px; font-weight: 600; letter-spacing: -0.5px; line-height: 1.3; }
+.recite-reading { font-size: 15px; color: var(--muted); margin-top: 6px; }
+.recite-hint { font-size: 13px; color: var(--faint); margin: 22px 0 12px; }
+.recite-meta { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+.recite-meaning { font-size: 16px; line-height: 1.7; margin: 10px 0 14px; }
+.recite-example { background: var(--surface-tint, #fafaf7); border-radius: var(--radius-sm); padding: 12px; text-align: left; }
+.recite-ex-src { font-size: 14.5px; line-height: 1.7; }
+.recite-ex-zh { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.recite-grades { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.recite-grades .btn { min-width: 84px; }

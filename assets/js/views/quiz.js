@@ -80,6 +80,7 @@ window.Views.quiz = {
         h.push('<div class="row-btns">');
         h.push('<button class="btn btn-primary btn-xs" data-act="pzdo" data-pid="' + p.id + '">开始做题</button>');
         h.push('<button class="btn btn-ghost btn-xs" data-act="pzmark" data-pid="' + p.id + '">识别知识点</button>');
+        h.push('<button class="btn btn-ghost btn-xs" data-act="pzedit" data-pid="' + p.id + '">编辑</button>');
         h.push('<button class="btn btn-ghost btn-xs" data-act="pzdel" data-pid="' + p.id + '">删除</button>');
         h.push('</div></div>');
       });
@@ -121,7 +122,7 @@ window.Views.quiz = {
       l.close();
       this.state.session = {
         passageText: p.text, marked: Marks.has(p.text), source: p.title || '题库语篇',
-        passageZh: '', problems: res.problems
+        passageZh: '', format: p.format || 'text', problems: res.problems
       };
       this.state.answers = {};
       this.state.results = {};
@@ -134,17 +135,17 @@ window.Views.quiz = {
     }
   },
 
-  /* 当前交互模式的提示文案：键鼠划词 / 触屏点词 */
+  /* 当前交互模式的提示文案：键鼠划词 / 触屏长按选中 */
   tipText: function () {
     var s = this.state.session;
-    if (s && s.marked) return '带下划线的就是即点区域，点一下直接讲；也可以选中任意片段提问';
+    if (s && s.marked) return '带下划线的就是即点区域，点一下直接讲；也可以划词后自己提问';
     return InputMode.isMouse()
-      ? '选中不懂的词或句子，点弹出的「讲一下」——当场讲完接着做题，不跳页'
-      : '点不懂的词就直接讲——当场讲完接着做题，不跳页';
+      ? '选中不懂的词或句子，点弹出的「提问」——自己写下问题，当场讲完接着做题'
+      : '长按选中不懂的词或句子，点弹出的「提问」——自己写下问题，当场讲完接着做题';
   },
 
   modeLabel: function () {
-    return InputMode.isMouse() ? '键鼠模式 · 划词提问' : '触屏模式 · 点词即讲';
+    return InputMode.isMouse() ? '键鼠模式 · 划词提问' : '触屏模式 · 长按选中提问';
   },
 
   refreshTip: function (root) {
@@ -169,7 +170,7 @@ window.Views.quiz = {
       '<span class="muted small qz-src">' + Util.esc(s.source || '') + '</span>' +
       '<span class="muted small qz-mode" id="qzMode">' + Util.esc(this.modeLabel()) + '</span>' +
       (s.passageZh ? '<button class="btn btn-ghost btn-xs" data-act="zh">显示翻译</button>' : '') + '</div>');
-    h.push('<div class="qz-passage" id="qzPassage">' + this.passageHTML(s.passageText, s.marked) + '</div>');
+    h.push('<div class="qz-passage" id="qzPassage">' + this.passageHTML(s.passageText, s.marked, s.format) + '</div>');
     if (s.passageZh) h.push('<div class="qz-zh" id="qzZh" style="display:none">' + Util.esc(s.passageZh) + '</div>');
     h.push('<div class="qz-tip" id="qzTip">' + Util.esc(this.tipText()) + '</div>');
     h.push('<div class="row-btns">');
@@ -195,22 +196,15 @@ window.Views.quiz = {
 
     var passage = root.querySelector('#qzPassage');
     if (passage) {
-      Select.enable(passage, function (sel) { self.explain(root, sel); }, '讲一下');
-      /* 触屏：点词即讲（键鼠模式交给划词；插上键鼠会自动切走） */
-      passage.addEventListener('click', function (e) {
-        if (InputMode.isMouse()) return;
-        if (e.target.closest && e.target.closest('.qz-mark')) return;      /* 即点区域走自己的分支 */
-        var picked = window.getSelection ? String(window.getSelection() || '').trim() : '';
-        if (picked) return;                                                /* 已长按选中 → 不重复触发 */
-        var w = InputMode.wordAt(e.clientX, e.clientY, self.state.subject);
-        if (w) self.explain(root, w);
-      });
+      /* 划词提问：选中后浮出提问按钮 → 弹输入框，用户自己问（留空则按默认讲解） */
+      Select.enable(passage, function (sel) { self.askQuestion(root, sel); }, '提问');
     }
     window.scrollTo(0, 0);
   },
 
-  /* 语篇渲染：即点区域 → 下划线可点 */
-  passageHTML: function (text, marked) {
+  /* 语篇渲染：即点区域 → 下划线可点；支持原文 / markdown 两种格式 */
+  passageHTML: function (text, marked, format) {
+    if (format === 'md') return this.passageMarkdownHTML(text, marked);
     if (!marked) return Util.esc(text);
     var i = 0;
     return Marks.parse(text).map(function (seg) {
@@ -219,6 +213,26 @@ window.Views.quiz = {
       return '<span class="qz-mark" data-mark="' + i + '" data-text="' + Util.escapeAttr(seg.value) + '">' +
         Util.esc(seg.value) + '</span>';
     }).join('');
+  },
+
+  /* Markdown 语篇：先渲染 markdown，再把即点区域包回可点 span */
+  passageMarkdownHTML: function (text, marked) {
+    if (!marked) return Util.mdToHtml(text);
+    var toks = [];
+    var parts = Marks.parse(text).map(function (seg) {
+      if (seg.type === 'text') return seg.value;
+      var i = toks.length;
+      toks.push(seg.value);
+      return '\u0001M' + i + '\u0001';
+    });
+    var html = Util.mdToHtml(parts.join(''));
+    toks.forEach(function (v, i) {
+      var token = '\u0001M' + i + '\u0001';
+      html = html.split(token).join(
+        '<span class="qz-mark" data-mark="' + (i + 1) + '" data-text="' + Util.escapeAttr(v) + '">' + Util.esc(v) + '</span>'
+      );
+    });
+    return html;
   },
 
   questionHTML: function (p, i) {
@@ -275,13 +289,54 @@ window.Views.quiz = {
   },
 
   /* ---------- 触点精讲 / 即点即学（不会 → 了解） ---------- */
+
+  /* 划词提问：在语篇下方就地展开输入条，让用户自己问（可留空 → 按默认讲解）
+     就地展开而不是弹窗遮罩——不打断做题节奏，也符合「全程不跳页」的理念。 */
+  askQuestion: function (root, sel) {
+    var host = root.querySelector('#qzExplains');
+    if (!host) return;
+    var old = host.querySelector('#qzAsk');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+
+    var box = document.createElement('div');
+    box.className = 'qz-ask';
+    box.id = 'qzAsk';
+    box.innerHTML =
+      '<div class="qz-ask-sel">' + Util.esc(sel.length > 60 ? sel.slice(0, 60) + '…' : sel) + '</div>' +
+      '<textarea class="input qz-ask-input" rows="2" placeholder="你想问什么？（留空则按默认讲解：释义 + 例句 + 用法）"></textarea>' +
+      '<div class="qz-ask-acts">' +
+      '<button class="btn btn-primary btn-sm" data-act="askgo" data-sel="' + Util.escapeAttr(sel) + '">提问</button>' +
+      '<button class="btn btn-ghost btn-sm" data-act="askcancel">取消</button></div>';
+    host.insertBefore(box, host.firstChild);
+    var ta = box.querySelector('.qz-ask-input');
+    if (ta && ta.focus) {
+      try { ta.focus(); } catch (e) { /* 某些 WebView 需要用户手势 */ }
+    }
+  },
+
+  askGo: function (root, sel) {
+    var box = root.querySelector('#qzAsk');
+    var q = '';
+    if (box) {
+      var ta = box.querySelector('.qz-ask-input');
+      q = ta ? String(ta.value || '').trim() : '';
+      if (box.parentNode) box.parentNode.removeChild(box);
+    }
+    this.explain(root, sel, { question: q });
+  },
+
+  askCancel: function (root) {
+    var box = root.querySelector('#qzAsk');
+    if (box && box.parentNode) box.parentNode.removeChild(box);
+  },
+
   explain: async function (root, sel, opts) {
     opts = opts || {};
     var st = this.state;
     var prev = st.explains[sel] || {};
 
-    /* 缓存命中：同一学科同一片段不再问 API */
-    var cached = await Store.getCachedExplain(st.subject, sel);
+    /* 缓存命中：同一「学科 + 片段 + 问题」不再问 API */
+    var cached = await Store.getCachedExplain(st.subject, sel, opts.question);
     if (cached) {
       st.explains[sel] = { exp: cached, saved: !!prev.saved, cached: true };
       this.renderExplainCard(root, sel);
@@ -293,8 +348,8 @@ window.Views.quiz = {
     try {
       var exp = opts.marked
         ? await AI.explainMarked(st.subject, sel, st.session.passageText)
-        : await AI.explainPoint(st.subject, sel, st.session.passageText);
-      await Store.saveCachedExplain(st.subject, sel, exp);
+        : await AI.explainPoint(st.subject, sel, st.session.passageText, { question: opts.question });
+      await Store.saveCachedExplain(st.subject, sel, exp, opts.question);
       st.explains[sel] = { exp: exp, saved: !!prev.saved, cached: false };
     } catch (err) {
       st.explains[sel] = { error: err.message || '讲解失败', loading: false, saved: prev.saved };
@@ -470,12 +525,19 @@ window.Views.quiz = {
         },
         { key: 'source', label: '来源', type: 'text', placeholder: '如：2024全国甲卷' },
         {
+          key: 'format', label: '格式', type: 'select',
+          options: [
+            { value: 'text', label: '原文（逐字呈现，适合日语课文/真题）' },
+            { value: 'md', label: 'Markdown（渲染标题/列表/表格，适合语法讲解文档）' }
+          ]
+        },
+        {
           key: 'text', label: '语篇原文', type: 'textarea', rows: 8, required: true,
-          placeholder: '把要学的语法点用 |{| … |}| 框住，例如：日本語を勉強し始めて|{|まだ半年|}だが',
-          hint: '标记语法：|{| 内容 |}| —— 框住的部分就是「即点区域」，做题时渲染成下划线，点一下直接讲'
+          placeholder: '把要学的词用 |{| … |}| 框住，例如：日本語を勉強し始めて|{|まだ半年|}だが',
+          hint: '标记语法：|{| 内容 |}| —— 框住的部分就是「即点区域」，做题时渲染成下划线，点一下直接讲。Markdown 格式下也可用'
         }
       ],
-      values: { subject: this.state.subject },
+      values: { subject: this.state.subject, format: 'text' },
       submitText: '存入题库'
     });
     if (!res) return;
@@ -484,12 +546,50 @@ window.Views.quiz = {
         subject: res.subject || this.state.subject,
         title: res.title,
         source: res.source,
+        format: res.format,
         text: res.text
       });
       UI.toast(rec.markCount ? '已存入题库（' + rec.markCount + ' 个即点区域）' : '已存入题库', 'info');
       this.renderIdle(root);
     } catch (err) {
       UI.toast(err.message || '导入失败', 'error');
+    }
+  },
+
+  /* 编辑语篇：识别后的标记可以改，标记可以重新框选 */
+  editPassage: async function (root, pid) {
+    var p = await Store.getPassage(pid);
+    if (!p) { UI.toast('语篇不存在', 'error'); return; }
+    var res = await UI.formDialog({
+      title: '编辑语篇',
+      fields: [
+        { key: 'title', label: '标题', type: 'text', required: true },
+        { key: 'source', label: '来源', type: 'text' },
+        {
+          key: 'format', label: '格式', type: 'select',
+          options: [
+            { value: 'text', label: '原文（逐字呈现）' },
+            { value: 'md', label: 'Markdown（渲染）' }
+          ]
+        },
+        {
+          key: 'text', label: '语篇原文', type: 'textarea', rows: 8, required: true,
+          hint: '即点区域用 |{| … |}| 框住；直接改文字即可重新框选，保存后立即生效'
+        }
+      ],
+      values: { title: p.title, source: p.source, format: p.format || 'text', text: p.text },
+      submitText: '保存'
+    });
+    if (!res) return;
+    try {
+      var rec = await Store.savePassage({
+        id: p.id, createdAt: p.createdAt, subject: p.subject,
+        title: res.title, source: res.source, format: res.format, text: res.text
+      });
+      UI.toast(rec.markCount ? '已保存（' + rec.markCount + ' 个即点区域）' : '已保存', 'info');
+      this.renderIdle(root);
+    } catch (err) {
+      UI.toast(err.message || '保存失败', 'error');
     }
   },
 
@@ -581,6 +681,7 @@ window.Views.quiz = {
     else if (act === 'import') this.importPassage(root);
     else if (act === 'pzdo') this.startFromPassage(root, ppid);
     else if (act === 'pzmark') this.markPoints(root, ppid);
+    else if (act === 'pzedit') this.editPassage(root, ppid);
     else if (act === 'pzdel') this.deletePassage(root, ppid);
     else if (act === 'markpts') this.markSessionPoints(root);
     else if (act === 'back') {
@@ -597,6 +698,8 @@ window.Views.quiz = {
         node.textContent = show ? '隐藏翻译' : '显示翻译';
       }
     } else if (act === 'submit') this.submitAnswer(root, node.getAttribute('data-qid'));
+    else if (act === 'askgo') this.askGo(root, sel2);
+    else if (act === 'askcancel') this.askCancel(root);
     else if (act === 'learn') this.learn(root, sel2);
     else if (act === 'simpler') this.simpler(root, sel2);
     else if (act === 'retry') this.explain(root, sel2);

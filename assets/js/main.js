@@ -6,6 +6,7 @@
     '#/library': 'library',
     '#/review': 'review',
     '#/practice': 'practice',
+    '#/words': 'words',
     '#/settings': 'settings'
   };
 

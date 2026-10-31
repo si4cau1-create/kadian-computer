@@ -1,11 +1,12 @@
 /* 数据层：IndexedDB 优先，localStorage 自动降级
    存储：stuckPoints 卡点 / passages 题库语篇 / images 图片 / problems AI练习题
-        reviews 复习记录 / mastery 知识点掌握度 / explains 精讲结果缓存 / settings 配置
+        reviews 复习记录 / mastery 知识点掌握度 / explains 精讲结果缓存
+        words 单词词条 / wordlists 导入的词表 / settings 配置
    所有数据只存在本机（手机或电脑），不上传服务器。 */
 var DB = (function () {
   var DB_NAME = 'kadian';
-  var DB_VER = 2;
-  var STORES = ['stuckPoints', 'passages', 'images', 'problems', 'reviews', 'mastery', 'explains', 'settings'];
+  var DB_VER = 3;
+  var STORES = ['stuckPoints', 'passages', 'images', 'problems', 'reviews', 'mastery', 'explains', 'words', 'wordlists', 'settings'];
   var db = null;
   var mode = 'idb';
 

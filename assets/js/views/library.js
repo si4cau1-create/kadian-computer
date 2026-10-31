@@ -8,6 +8,12 @@ window.Views.library = {
     var self = this;
     if (params && params.new) { location.hash = '#/library'; setTimeout(function () { self.quickNew(); }, 100); }
 
+    /* 「单词」分段交给单词视图（词表管理 + 背诵） */
+    if (this.state.tab === 'words') {
+      await window.Views.words.render(root, { mode: 'manage' });
+      return;
+    }
+
     var h = [];
     h.push('<div class="page-head"><h1 class="page-title">卡点库</h1>');
     h.push('<button class="btn btn-primary btn-sm" data-act="newcard">＋ 记卡点</button></div>');
@@ -15,6 +21,7 @@ window.Views.library = {
     h.push('<div class="seg" id="libSeg">');
     h.push('<button class="seg-btn' + (this.state.tab === 'cards' ? ' on' : '') + '" data-tab="cards">卡点</button>');
     h.push('<button class="seg-btn' + (this.state.tab === 'passages' ? ' on' : '') + '" data-tab="passages">语篇</button>');
+    h.push('<button class="seg-btn' + (this.state.tab === 'words' ? ' on' : '') + '" data-tab="words">单词</button>');
     h.push('</div>');
 
     if (this.state.tab === 'cards') {

@@ -21,6 +21,7 @@ var SHELL = [
   './assets/js/views/library.js',
   './assets/js/views/review.js',
   './assets/js/views/practice.js',
+  './assets/js/views/words.js',
   './assets/js/views/settings.js',
   './assets/js/main.js',
   './assets/vendor/katex/katex.min.css',

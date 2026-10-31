@@ -1,9 +1,11 @@
 /* 即点区域标记：|{| … |}|
    用户自导入与 API 一键识别共用这一套语法（弃用 *{*…*}*：与 Markdown 斜体冲突）
+   容错：闭合写成 |}（少一个竖线，模型常犯）也认，避免整段不渲染。
    解析结果是一串段：[文本段] 与 [即点区域段] 交替。 */
 var Marks = (function () {
   var OPEN = '|{|';
   var CLOSE = '|}|';
+  var CLOSE_SHORT = '|}';       /* 容错：闭合少一个竖线 */
 
   /* 解析带标记文本 → [{type:'text'|'mark', value}] */
   function parse(text) {
@@ -18,12 +20,17 @@ var Marks = (function () {
       }
       if (o > i) out.push({ type: 'text', value: s.slice(i, o) });
       var c = s.indexOf(CLOSE, o + OPEN.length);
+      var closeLen = CLOSE.length;
+      if (c < 0) {                      /* 容错：闭合写成 |} */
+        c = s.indexOf(CLOSE_SHORT, o + OPEN.length);
+        closeLen = CLOSE_SHORT.length;
+      }
       if (c < 0) {                       /* 未闭合的标记：原样当普通文本，不吞内容 */
         out.push({ type: 'text', value: s.slice(o) });
         break;
       }
       out.push({ type: 'mark', value: s.slice(o + OPEN.length, c) });
-      i = c + CLOSE.length;
+      i = c + closeLen;
     }
     return out;
   }
