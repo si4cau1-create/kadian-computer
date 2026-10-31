@@ -74,7 +74,7 @@
     });
 
     var bar = document.getElementById('tabbar');
-    bar.innerHTML = TABS.map(tabHTML).join('');
+    bar.innerHTML = '<div class="tabbar-pill">' + TABS.map(tabHTML).join('') + '</div>';
     bar.addEventListener('click', function (e) {
       var b = e.target.closest('.tab');
       if (!b) return;
