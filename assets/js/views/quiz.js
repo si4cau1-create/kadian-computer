@@ -79,7 +79,6 @@ window.Views.quiz = {
         h.push('<div class="pz-text">' + Util.esc(String(p.plain || '').slice(0, 80)) + (String(p.plain || '').length > 80 ? '…' : '') + '</div>');
         h.push('<div class="row-btns">');
         h.push('<button class="btn btn-primary btn-xs" data-act="pzdo" data-pid="' + p.id + '">开始做题</button>');
-        h.push('<button class="btn btn-ghost btn-xs" data-act="pzmark" data-pid="' + p.id + '">识别知识点</button>');
         h.push('<button class="btn btn-ghost btn-xs" data-act="pzedit" data-pid="' + p.id + '">编辑</button>');
         h.push('<button class="btn btn-ghost btn-xs" data-act="pzdel" data-pid="' + p.id + '">删除</button>');
         h.push('</div></div>');
@@ -175,7 +174,6 @@ window.Views.quiz = {
     h.push('<div class="qz-tip" id="qzTip">' + Util.esc(this.tipText()) + '</div>');
     h.push('<div class="row-btns">');
     if (!s.marked) {
-      h.push('<button class="btn btn-ghost btn-xs" data-act="markpts">标记知识点</button>');
     }
     h.push('<button class="btn btn-ghost btn-xs" data-act="back">换一篇</button>');
     h.push('</div></div>');
@@ -593,39 +591,7 @@ window.Views.quiz = {
     }
   },
 
-  markPoints: async function (root, pid) {
-    var p = await Store.getPassage(pid);
-    if (!p) { UI.toast('语篇不存在', 'error'); return; }
-    var l = UI.loading('AI 正在识别知识点…');
-    try {
-      var marked = await Store.detectPoints(this.state.subject, p.text);
-      await Store.updatePassageMarks(pid, marked);
-      l.close();
-      var rec = await Store.getPassage(pid);
-      UI.toast('识别出 ' + rec.markCount + ' 个知识点，已标成下划线', 'info');
-      this.renderIdle(root);
-    } catch (err) {
-      l.close();
-      UI.toast(err.message || '识别失败', 'error');
-    }
-  },
 
-  markSessionPoints: async function (root) {
-    var s = this.state.session;
-    if (!s) return;
-    var l = UI.loading('AI 正在识别知识点…');
-    try {
-      var marked = await Store.detectPoints(this.state.subject, s.passageText);
-      l.close();
-      s.passageText = marked;
-      s.marked = true;
-      this.renderSession(root);
-      UI.toast('已标出知识点，点下划线即可直接讲', 'info');
-    } catch (err) {
-      l.close();
-      UI.toast(err.message || '识别失败', 'error');
-    }
-  },
 
   deletePassage: async function (root, pid) {
     var okDel = await UI.confirmDialog('删除这篇语篇？已入库的卡点不受影响。', '删除');
@@ -680,10 +646,8 @@ window.Views.quiz = {
     else if (act === 'gen' || act === 'regen') this.generate(root);
     else if (act === 'import') this.importPassage(root);
     else if (act === 'pzdo') this.startFromPassage(root, ppid);
-    else if (act === 'pzmark') this.markPoints(root, ppid);
     else if (act === 'pzedit') this.editPassage(root, ppid);
     else if (act === 'pzdel') this.deletePassage(root, ppid);
-    else if (act === 'markpts') this.markSessionPoints(root);
     else if (act === 'back') {
       this.state.session = null;
       this.state.explains = {};

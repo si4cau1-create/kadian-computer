@@ -47,7 +47,7 @@ var Marks = (function () {
       .map(function (seg) { return seg.value; });
   }
 
-  /* 给纯文本里的若干片段加标记（按出现顺序，依次匹配，不重复标记） */
+  /* 给纯文本里的若干片段加标记（每个片段只标第一处） */
   function wrap(text, pieces) {
     var s = String(text == null ? '' : text);
     var list2 = (pieces || []).map(function (p) { return String(p || ''); })
@@ -58,7 +58,8 @@ var Marks = (function () {
       var idx = s.indexOf(p);
       if (idx < 0) return;
       marks.push({ start: idx, end: idx + p.length });
-      s = s.slice(0, idx) + ' ' + s.slice(idx + p.length);
+      /* 等长占位（不是单空格），否则后面的索引会整体移位 */
+      s = s.slice(0, idx) + new Array(p.length + 1).join(' ') + s.slice(idx + p.length);
     });
     marks.sort(function (a, b) { return a.start - b.start; });
     var out = '';
@@ -71,13 +72,52 @@ var Marks = (function () {
     return out;
   }
 
+  /* 把若干片段的「所有出现处」都加上标记（词汇量调查 → 未掌握词转即点区域用） */
+  function wrapAll(text, pieces) {
+    var s = String(text == null ? '' : text);
+    var hits = [];
+    (pieces || []).map(function (p) { return String(p || ''); })
+      .filter(function (p) { return p.length > 0; })
+      .forEach(function (p) {
+        var from = 0, idx;
+        while ((idx = s.indexOf(p, from)) >= 0) {
+          hits.push({ start: idx, end: idx + p.length });
+          from = idx + p.length;
+        }
+      });
+    if (!hits.length) return s;
+    hits.sort(function (a, b) { return a.start - b.start || b.end - a.end; });
+    /* 去掉重叠区间（长片段优先） */
+    var kept = [], last = -1;
+    hits.forEach(function (h) {
+      if (h.start >= last) { kept.push(h); last = h.end; }
+    });
+    var out = '', cur = 0;
+    kept.forEach(function (m) {
+      out += s.slice(cur, m.start) + OPEN + s.slice(m.start, m.end) + CLOSE;
+      cur = m.end;
+    });
+    out += s.slice(cur);
+    return out;
+  }
+
   /* 是否含标记 */
   function has(text) {
     return String(text == null ? '' : text).indexOf(OPEN) >= 0;
   }
 
+  /* 在保留既有标记的前提下，把若干片段补标成即点区域 */
+  function markIn(text, pieces) {
+    var out = '';
+    parse(text).forEach(function (seg) {
+      if (seg.type === 'mark') out += OPEN + seg.value + CLOSE;
+      else out += wrapAll(seg.value, pieces);
+    });
+    return out;
+  }
+
   return {
     OPEN: OPEN, CLOSE: CLOSE,
-    parse: parse, strip: strip, list: list, wrap: wrap, has: has
+    parse: parse, strip: strip, list: list, wrap: wrap, wrapAll: wrapAll, markIn: markIn, has: has
   };
 })();

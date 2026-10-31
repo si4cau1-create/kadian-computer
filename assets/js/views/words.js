@@ -52,12 +52,23 @@ window.Views.words = {
       h.push('<div class="stack">');
       lists.forEach(function (l) {
         var n = byList[l.id] || 0;
+        var unknown = (l.results || []).filter(function (r) { return !r.known; });
         h.push('<div class="wl-item">');
         h.push('<div class="wl-top"><b>' + Util.esc(l.name) + '</b>' +
           '<span class="pz-meta">' + l.count + ' 词' + (n ? ' · 已生成 ' + n + ' 条词条' : ' · 未生成词条') + '</span></div>');
+        if (l.checkedAt) {
+          h.push('<div class="wl-survey">词汇量调查：已掌握 ' + l.knownCount + ' · 未掌握 ' + l.unknownCount + '</div>');
+          if (unknown.length) {
+            h.push('<div class="wl-unknown">' + unknown.map(function (r) {
+              return '<span class="wl-uw">' + Util.esc(r.word) + '</span>';
+            }).join('') + '</div>');
+          }
+        }
         h.push('<div class="row-btns">');
         h.push(n ? '' : '<button class="btn btn-primary btn-xs" data-act="gen" data-lid="' + l.id + '">生成词条</button>');
         h.push(n ? '<button class="btn btn-primary btn-xs" data-act="recite" data-lid="' + l.id + '">开始背诵</button>' : '');
+        h.push('<button class="btn btn-ghost btn-xs" data-act="survey" data-lid="' + l.id + '">调查词汇量</button>');
+        if (unknown.length) h.push('<button class="btn btn-ghost btn-xs" data-act="markwords" data-lid="' + l.id + '">标记到语篇</button>');
         h.push('<button class="btn btn-ghost btn-xs" data-act="dellist" data-lid="' + l.id + '">删除</button>');
         h.push('</div></div>');
       });
@@ -88,6 +99,8 @@ window.Views.words = {
       else if (act === 'gen') self.genEntries(root, lid);
       else if (act === 'recite') self.startRecite(root, lid);
       else if (act === 'dellist') self.delList(root, lid);
+      else if (act === 'survey') self.survey(root, lid);
+      else if (act === 'markwords') self.markWords(root, lid);
       else if (act === 'backlib') {
         if (window.Views.library) window.Views.library.state.tab = 'cards';
         location.hash = '#/library';
@@ -144,6 +157,46 @@ window.Views.words = {
     await Store.deleteWordList(listId);
     UI.toast('已删除', 'info');
     this.renderManage(root);
+  },
+
+  /* 词汇量调查：判定哪些词已掌握、哪些没掌握 */
+  survey: async function (root, listId) {
+    var l = UI.loading('正在调查词汇量…');
+    try {
+      var rec = await Store.checkVocabulary(this.state.subject, listId);
+      l.close();
+      UI.toast('已掌握 ' + rec.knownCount + ' · 未掌握 ' + rec.unknownCount, 'info');
+      this.renderManage(root);
+    } catch (err) {
+      l.close();
+      UI.toast(err.message || '调查失败', 'error');
+    }
+  },
+
+  /* 把未掌握的词在选中的语篇里标成即点区域 */
+  markWords: async function (root, listId) {
+    var list = await Store.getWordList(listId);
+    var passages = await Store.listPassages({ subject: this.state.subject });
+    if (!passages.length) { UI.toast('题库里还没有语篇，先导入一篇', 'error'); return; }
+    var res = await UI.formDialog({
+      title: '标记到哪篇语篇',
+      fields: [{
+        key: 'pid', label: '语篇', type: 'select',
+        options: passages.map(function (p) { return { value: p.id, label: p.title }; })
+      }],
+      submitText: '标记'
+    });
+    if (!res) return;
+    var l2 = UI.loading('正在标记…');
+    try {
+      var rec = await Store.markUnknownWords(res.pid, listId);
+      l2.close();
+      UI.toast('已标记 ' + rec.markCount + ' 个即点区域（未掌握的词）', 'info');
+      this.renderManage(root);
+    } catch (err) {
+      l2.close();
+      UI.toast(err.message || '标记失败', 'error');
+    }
   },
 
   /* ---------- 背诵页：卡片流 ---------- */

@@ -456,16 +456,7 @@ var Store = (function () {
     return { passage: plain, passageZh: '', source: '题库语篇', problems: problems };
   }
 
-  /* API 一键识别知识点：返回带 |{|…|}| 标记的语篇 */
-  async function detectPoints(subject, text) {
-    var plain = Marks.strip(String(text || ''));
-    if (!plain) throw new Error('语篇是空的');
-    var marked = await AI.detectPoints(subject, plain);
-    if (!marked || !marked.trim()) throw new Error('没有识别出知识点');
-    return marked.trim();
-  }
-
-  /* 「学会了」一键入库：触点精讲结果 → 卡点（零填表， topic 由精讲结果带出） */
+  /* API 一键识别知识点：返回带 |{|…|}| 标记的语篇 *//* 「学会了」一键入库：触点精讲结果 → 卡点（零填表， topic 由精讲结果带出） */
   async function savePointAsCard(subject, exp, sel, passage, source) {
     exp = exp || {};
     var answer = '**' + (exp.point || sel || '') + '**\n\n' +
@@ -539,6 +530,35 @@ var Store = (function () {
     return out;
   }
   async function getWordList(id) { return DB.get('wordlists', id); }
+
+  /* 词汇量调查：判定词表里每个词是否已掌握，结果记在词表上 */
+  async function checkVocabulary(subject, listId) {
+    var list = await getWordList(listId);
+    if (!list) throw new Error('词表不存在');
+    var results = await AI.checkVocabulary(subject, list.items);
+    list.results = results;
+    list.knownCount = results.filter(function (r) { return r.known; }).length;
+    list.unknownCount = results.length - list.knownCount;
+    list.checkedAt = nowISO();
+    await DB.put('wordlists', list);
+    return list;
+  }
+
+  /* 把未掌握的词在语篇里补标成即点区域（保留用户已有的标记） */
+  async function markUnknownWords(passageId, listId) {
+    var p = await getPassage(passageId);
+    var list = await getWordList(listId);
+    if (!p) throw new Error('语篇不存在');
+    if (!list) throw new Error('词表不存在');
+    var unknown = (list.results || []).filter(function (r) { return !r.known; })
+      .map(function (r) { return r.word; });
+    if (!unknown.length) throw new Error('这个词表还没做词汇量调查，或没有未掌握的词');
+    var marked = Marks.markIn(p.text, unknown);
+    return await savePassage({
+      id: p.id, createdAt: p.createdAt, subject: p.subject,
+      title: p.title, source: p.source, format: p.format, text: marked
+    });
+  }
   async function deleteWordList(id) {
     var ws = await DB.all('words');
     for (var i = 0; i < ws.length; i++) if (ws[i].listId === id) await DB.del('words', ws[i].id);
@@ -718,6 +738,8 @@ var Store = (function () {
     importWordList: importWordList,
     listWordLists: listWordLists,
     getWordList: getWordList,
+    checkVocabulary: checkVocabulary,
+    markUnknownWords: markUnknownWords,
     deleteWordList: deleteWordList,
     generateWordEntries: generateWordEntries,
     listWords: listWords,
@@ -739,8 +761,7 @@ var Store = (function () {
     generateForCard: generateForCard,
     generateForTopic: generateForTopic,
     generateQuiz: generateQuiz,
-    generateQuizFromPassage: generateQuizFromPassage,
-    detectPoints: detectPoints,
+    generateQuizFromPassage: generateQuizFromPassage,
     savePointAsCard: savePointAsCard,
     todayQueue: todayQueue,
     stats: stats,

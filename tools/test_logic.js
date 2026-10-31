@@ -250,8 +250,8 @@ function ok(name, cond) {
     } else if (prompt.indexOf('词汇量评估') >= 0) {
       /* 词汇量调查 */
       content = JSON.stringify({ results: [
-        { word: '売り上げる', known: false, reason: '复杂动词，需查词典' },
-        { word: '手続き', known: true, reason: '基础名词' }
+        { word: '手続き', known: false, reason: '复合词，需查词典' },
+        { word: '窓口', known: true, reason: '基础名词' }
       ] });
     } else if (prompt.indexOf('基于这段语篇出') >= 0) {
       /* 基于题库语篇出题 */
@@ -324,14 +324,20 @@ function ok(name, cond) {
   ok('题库语篇保存时解析出即点区域', pz.markCount === 1 && pz.plain === '日本語を勉強し始めてまだ半年だが' && pz.marks[0] === 'まだ半年');
   ok('题库按学科可列出', (await Store.listPassages({ subject: 'japanese' })).some(p => p.id === pz.id));
 
-  /* 识别知识点：API 返回带标记语篇 → 回写 */
-  const markedText = await Store.detectPoints('japanese', pz.plain);
-  ok('识别知识点返回带标记语篇', markedText.indexOf('|{|') >= 0);
-  const pz2 = await Store.updatePassageMarks(pz.id, markedText);
-  ok('识别结果回写后即点区域增加', pz2.markCount === 2, 'count=' + pz2.markCount);
+  /* 词汇量调查 → 未掌握的词 → 标成即点区域（替代已下线的自动识别语法） */
+  const wl0 = await Store.importWordList('japanese', '测试词表', '手続き\n窓口');
+  const wlChecked = await Store.checkVocabulary('japanese', wl0.id);
+  ok('词汇量调查给出已掌握/未掌握判定',
+    wlChecked.results.length === 2 && wlChecked.knownCount === 1 && wlChecked.unknownCount === 1,
+    JSON.stringify({ k: wlChecked.knownCount, u: wlChecked.unknownCount }));
+  const pzW = await Store.savePassage({ subject: 'japanese', title: '待标记语篇', text: '今日、窓口で手続きをしました。' });
+  const pzMarked = await Store.markUnknownWords(pzW.id, wl0.id);
+  ok('未掌握的词在语篇里被标成即点区域',
+    pzMarked.markCount === 1 && pzMarked.marks.indexOf('手続き') >= 0,
+    'marks=' + JSON.stringify(pzMarked.marks));
 
   /* 基于题库语篇出题（不出新语篇） */
-  const pzQuiz = await Store.generateQuizFromPassage('japanese', pz2.text, 2);
+  const pzQuiz = await Store.generateQuizFromPassage('japanese', pzMarked.text, 2);
   ok('基于题库语篇出题', pzQuiz.problems.length === 1 && pzQuiz.problems[0].passage.indexOf('|{|') < 0);
 
   /* 精讲缓存：同一片段只问一次 */
@@ -344,13 +350,13 @@ function ok(name, cond) {
   /* 缓存命中时不再发 API 请求 */
   const before = fetchCount;
   const cacheRoot = makeEl();
-  quizView.state.session = { passageText: pz2.text, marked: true, source: '题库', problems: [] };
+  quizView.state.session = { passageText: pzMarked.text, marked: true, source: '题库', problems: [] };
   await quizView.explain(cacheRoot, 'まだ半年', { marked: true });
   ok('缓存命中不再调用 API', fetchCount === before, 'fetch: ' + before + '→' + fetchCount);
 
   /* 即点区域渲染成下划线可点 */
-  const mk = quizView.passageHTML(pz2.text, true);
-  ok('即点区域渲染成 .qz-mark 且带原文', mk.indexOf('class="qz-mark"') >= 0 && mk.indexOf('data-text="まだ半年"') >= 0);
+  const mk = quizView.passageHTML(pzMarked.text, true);
+  ok('即点区域渲染成 .qz-mark 且带原文', mk.indexOf('class="qz-mark"') >= 0 && mk.indexOf('data-text="手続き"') >= 0);
 
   /* 起始页：题库列表 + 其它学科敬请期待 */
   const idleHost = makeEl();
@@ -359,7 +365,7 @@ function ok(name, cond) {
     querySelectorAll: () => []
   };
   await quizView.renderIdle(fakeRoot);
-  ok('起始页列出题库并有开始做题入口', idleHost.innerHTML.indexOf('开始做题') >= 0 && idleHost.innerHTML.indexOf('识别知识点') >= 0);
+  ok('起始页列出题库并有开始做题入口', idleHost.innerHTML.indexOf('开始做题') >= 0 && idleHost.innerHTML.indexOf('编辑') >= 0);
   ok('其它学科标注敬请期待', idleHost.innerHTML.indexOf('敬请期待') >= 0 && idleHost.innerHTML.indexOf('chip-soon') >= 0);
   ok('日语/英语标为可用', (idleHost.innerHTML.match(/data-ready="1"/g) || []).length === 2);
 

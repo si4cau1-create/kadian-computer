@@ -208,21 +208,7 @@ var AI = (function () {
       '"topic":"归类名，用于知识点聚合，如：日语·语法·否定"}';
   }
 
-  /* 知识点一键识别：扫描语篇，把值得学的语法点/词汇用 |{|…|}| 框住后原样返回 */
-  function pDetectPoints(subject, text) {
-    return CONFIG.role(subject) +
-      '\n\n下面是一段' + CONFIG.subjectName(subject) + '语篇。请扫描全文，找出其中**值得学生专门学的语法点和词汇**，并直接输出改写后的整段语篇。\n' +
-      '\n【语篇】\n' + (text || '') +
-      '\n\n要求：\n' +
-      '1. 只标"值得学"的点：高考/考级范围内的语法、高频词、易混用法；不要标人名地名和一看就懂的简单词\n' +
-      '2. 用 |{| 和 |}| 把每个要学的点框住（例如：日本語を勉強し始めて|{|まだ半年|}だが）\n' +
-      '3. 框住的内容必须与原文逐字一致，不得改动原文其他任何字词\n' +
-      '4. 一段 150 字段落标 3-8 个点，不要贪多\n' +
-      '5. 除了标记本身，不要输出任何其他文字、不要解释、不要编号\n\n' +
-      '只输出改写后的语篇原文。';
-  }
-
-  /* 基于用户导入的语篇出题（不出新语篇） */
+  /* 知识点一键识别：扫描语篇，把值得学的语法点/词汇用 |{|…|}| 框住后原样返回 *//* 基于用户导入的语篇出题（不出新语篇） */
   function pQuizFromPassage(subject, passage, count) {
     return CONFIG.role(subject) +
       '\n\n下面是一段' + CONFIG.subjectName(subject) + '语篇。请基于这段语篇出 ' + count + ' 道题。\n' +
@@ -416,22 +402,7 @@ var AI = (function () {
     return normalizeExplain(extractJSON(raw), sel);
   }
 
-  /* 知识点一键识别：返回带 |{|…|}| 标记的语篇 */
-  async function detectPoints(subject, plainText) {
-    var raw = await chat([
-      { role: 'user', content: pDetectPoints(subject, plainText) }
-    ], { temperature: 0.2, maxTokens: 2000, timeout: 180000 });
-    var t = String(raw || '').trim();
-    /* 模型偶尔会加围栏或前后废话：截取从第一个非空字符开始、到最后一个非空字符 */
-    if (t.indexOf('```') >= 0) {
-      var m = t.match(/```(?:[a-zA-Z]*)?\s*([\s\S]*?)```/);
-      if (m) t = m[1].trim();
-    }
-    if (!t) throw new Error('模型没有返回内容');
-    return t;
-  }
-
-  /* 基于指定语篇出题 */
+  /* 知识点一键识别：返回带 |{|…|}| 标记的语篇 *//* 基于指定语篇出题 */
   async function generateQuizFromPassage(subject, passage, count) {
     count = count || 3;
     var raw = await chat([
@@ -513,8 +484,7 @@ var AI = (function () {
     generateWordEntries: generateWordEntries,
     checkVocabulary: checkVocabulary,
     explainPoint: explainPoint,
-    explainMarked: explainMarked,
-    detectPoints: detectPoints,
+    explainMarked: explainMarked,
     extractJSON: extractJSON,
     testConnection: testConnection,
     prompts: {
@@ -523,8 +493,7 @@ var AI = (function () {
       ocr: pOCR,
       practice: pPractice,
       quiz: pQuiz,
-      quizFromPassage: pQuizFromPassage,
-      detectPoints: pDetectPoints,
+      quizFromPassage: pQuizFromPassage,
       wordEntries: pWordEntries,
       vocabularyCheck: pVocabularyCheck,
       explainPoint: pExplainPoint,
