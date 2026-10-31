@@ -166,7 +166,7 @@ code {
 /* ---------- 统计卡 ---------- */
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 4px;
 }
@@ -619,9 +619,90 @@ textarea.input { resize: vertical; line-height: 1.6; }
   .tabbar-pill { max-width: 1000px; }
   .qz-passage { font-size: 18px; }
 }
+
+/* ---------- 桌面端（≥1024px）：左侧导航栏 + 两栏工作台 ---------- */
+.qz-side { display: none; }
+.qz-side-title { font-size: 12px; color: var(--faint); margin-bottom: 8px; }
+.tabbar-brand { display: none; }
+
+@media (min-width: 1024px) {
+  /* 底部胶囊 → 左侧导航栏 */
+  .tabbar {
+    top: 0; bottom: 0; right: auto;
+    width: 256px;
+    padding: 20px 12px;
+    background: #EFEFEA;
+    pointer-events: auto;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tabbar-brand {
+    display: flex; align-items: center; gap: 9px;
+    padding: 4px 11px 18px;
+    font-size: 16px; font-weight: 600; color: var(--text);
+  }
+  .tabbar-brand i {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: var(--accent); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-style: normal; font-size: 15px;
+  }
+  .tabbar-brand small { display: block; font-size: 11.5px; font-weight: 400; color: var(--faint); margin-top: 1px; }
+  .tabbar-pill {
+    flex-direction: column;
+    gap: 2px;
+    max-width: none;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  .tab {
+    flex: none;
+    height: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 11px;
+    font-size: 14px;
+  }
+  .tab-icon { width: 18px; height: 18px; }
+  .tab-label { font-size: 14px; }
+  .view {
+    margin-left: 256px;
+    max-width: 1000px;
+    padding: 24px 24px calc(40px + var(--safe-b));
+  }
+  /* 做题：语篇+题目在左，精讲检查器在右 */
+  .qz-layout { display: grid; grid-template-columns: 1fr 400px; gap: 20px; align-items: start; }
+  .qz-side { display: block; position: sticky; top: 20px; }
+}
 .qe-cached { font-size: 11px; color: var(--muted); background: rgba(0, 0, 0, .05); border-radius: 4px; padding: 1px 6px; }
 .qz-mode { margin-right: auto; }
 .qz-src { margin-right: 0; }
+
+/* 主线卡（蓝底）：今天最该做的一件事 */
+.mainline-card {
+  background: var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 14px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 9px;
+}
+.ml-label { font-size: 12px; color: #CFE4F8; }
+.ml-title { font-size: 24px; font-weight: 700; color: #fff; line-height: 1.3; letter-spacing: -0.3px; }
+.ml-sub { font-size: 13px; color: #CFE4F8; line-height: 1.6; }
+.btn-invert { background: #fff; color: var(--accent-ink); border-color: #fff; font-weight: 500; margin-top: 3px; }
+.btn-invert:active { background: var(--accent-soft); }
+
+/* 闭环提示卡 */
+.loop-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-top: 16px; }
+.loop-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.loop-sub { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
 /* 即点即学：题库里标出的语法点/单词渲染成可点下划线 */
 .qz-mark {

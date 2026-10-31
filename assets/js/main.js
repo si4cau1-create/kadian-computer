@@ -74,7 +74,8 @@
     });
 
     var bar = document.getElementById('tabbar');
-    bar.innerHTML = '<div class="tabbar-pill">' + TABS.map(tabHTML).join('') + '</div>';
+    bar.innerHTML = '<div class="tabbar-brand"><i>卡</i><span>卡点 Kadian<small>日语 · 英语 · 本地优先</small></span></div>' +
+      '<div class="tabbar-pill">' + TABS.map(tabHTML).join('') + '</div>';
     bar.addEventListener('click', function (e) {
       var b = e.target.closest('.tab');
       if (!b) return;

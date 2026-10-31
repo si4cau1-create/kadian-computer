@@ -41,6 +41,17 @@ window.Views.quiz = {
       '<div id="qzArea"></div>';
 
     root.addEventListener('click', function (e) { self.onClick(e, root); });
+
+    /* 窗口跨越 1024px 断点时重新摆放精讲区（手机：语篇下方；桌面：右栏） */
+    if (!this._resizeBound) {
+      this._resizeBound = true;
+      window.addEventListener('resize', Util.debounce(function () {
+        var v = document.getElementById('view');
+        var q = window.Views && window.Views.quiz;
+        if (v && q && q.state.session) q.placeExplain(v);
+      }, 150));
+    }
+
     this.renderIdle(root);
   },
 
@@ -163,6 +174,9 @@ window.Views.quiz = {
     if (idle) idle.innerHTML = '';
     var h = [];
 
+    h.push('<div id="qzArea" class="qz-layout">');
+    h.push('<div id="qzMain">');
+
     /* 语篇卡 */
     h.push('<div class="qz-card qz-passage-card">');
     h.push('<div class="qz-card-top">' + UI.subjectTag(this.state.subject) +
@@ -173,12 +187,10 @@ window.Views.quiz = {
     if (s.passageZh) h.push('<div class="qz-zh" id="qzZh" style="display:none">' + Util.esc(s.passageZh) + '</div>');
     h.push('<div class="qz-tip" id="qzTip">' + Util.esc(this.tipText()) + '</div>');
     h.push('<div class="row-btns">');
-    if (!s.marked) {
-    }
     h.push('<button class="btn btn-ghost btn-xs" data-act="back">换一篇</button>');
     h.push('</div></div>');
 
-    /* 精讲卡区 */
+    /* 精讲卡区：手机端在语篇与题目之间；桌面端移到右栏（见 placeExplain） */
     h.push('<div id="qzExplains" class="stack"></div>');
 
     /* 题目区 */
@@ -189,6 +201,10 @@ window.Views.quiz = {
     h.push('</div>');
     h.push('<div id="qzSummary"></div>');
 
+    h.push('</div>');   /* /qzMain */
+    h.push('<div id="qzSide" class="qz-side"><div class="qz-side-title">就点即讲 · 不跳页</div></div>');
+    h.push('</div>');   /* /qzArea */
+
     var area = root.querySelector('#qzArea');
     area.innerHTML = h.join('');
 
@@ -197,7 +213,22 @@ window.Views.quiz = {
       /* 划词提问：选中后浮出提问按钮 → 弹输入框，用户自己问（留空则按默认讲解） */
       Select.enable(passage, function (sel) { self.askQuestion(root, sel); }, '提问');
     }
+    this.placeExplain(root);
     window.scrollTo(0, 0);
+  },
+
+  /* 桌面端（≥1024px）：精讲卡移到右栏，不打断左侧滚动 */
+  placeExplain: function (root) {
+    var main = root.querySelector('#qzMain');
+    var side = root.querySelector('#qzSide');
+    var ex = root.querySelector('#qzExplains');
+    if (!main || !side || !ex) return;
+    if (window.innerWidth >= 1024) {
+      if (ex.parentNode !== side) side.appendChild(ex);
+    } else if (ex.parentNode !== main) {
+      var qs = main.querySelector('#qzQuestions');
+      main.insertBefore(ex, qs);
+    }
   },
 
   /* 语篇渲染：即点区域 → 下划线可点；支持原文 / markdown 两种格式 */
